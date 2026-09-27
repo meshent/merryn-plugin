@@ -1,0 +1,16 @@
+{
+  "name": "merryn",
+  "version": "0.1.0",
+  "description": "Merryn's generic Claude Code skills for any tenant instance: /merryn (the backlog loop) and the shared instance, review and docs contracts",
+  "author": {
+    "name": "meshent"
+  },
+  "repository": "https://github.com/meshent/merryn-plugin",
+  "keywords": [
+    "merryn",
+    "queue",
+    "backlog",
+    "orchestrator"
+  ],
+  "skills": "./skills/"
+}

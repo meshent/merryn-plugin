@@ -1,0 +1,14 @@
+{
+  "name": "meshent",
+  "owner": {
+    "name": "meshent"
+  },
+  "description": "Claude Code plugins for Merryn, the work-coordination platform: generic skills that work any tenant instance.",
+  "plugins": [
+    {
+      "name": "merryn",
+      "source": "./plugins/merryn",
+      "description": "Merryn's generic Claude Code skills for any tenant instance: /merryn (the backlog loop) and the shared instance, review and docs contracts"
+    }
+  ]
+}
