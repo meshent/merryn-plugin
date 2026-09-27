@@ -6,6 +6,8 @@
     "name": "meshent"
   },
   "repository": "https://github.com/meshent/merryn-plugin",
+  "homepage": "https://github.com/meshent/merryn-plugin#readme",
+  "license": "MIT",
   "keywords": [
     "merryn",
     "queue",
