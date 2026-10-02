@@ -12,9 +12,9 @@ tenant that needs more layers its own plugin on top of this one instead of forki
 |---|---|
 | `skills/merryn/SKILL.md` | `/merryn`, the backlog loop: desk first, plan lanes, dispatch one agent per pulled item, review, land, close out, repeat until the queue is dry |
 | `skills/run/SKILL.md` | `/merryn:run <domain>`, the worker loop over one domain: pull the tickets its routing policy gives your model, work them under the charter, release each |
-| `skills/feature/SKILL.md` | `/feature [key]`, cross-cutting features: probe the seams the repositories actually expose, build when they are there, file the gaps when not |
-| `skills/groom/SKILL.md` | `/groom <domain>`, keep a domain's queue true: close what is done, file gaps, fold answers and requests into tickets, work design tickets inline |
-| `skills/answer/SKILL.md` | `/answer`, the desk: present open questions with a recommendation, record the owner's answers with provenance (`--assist`, `--auto`) |
+| `skills/feature/SKILL.md` | `/merryn:feature [key]`, cross-cutting features: probe the seams the repositories actually expose, build when they are there, file the gaps when not |
+| `skills/groom/SKILL.md` | `/merryn:groom <domain>`, keep a domain's queue true: close what is done, file gaps, fold answers and requests into tickets, work design tickets inline |
+| `skills/answer/SKILL.md` | `/merryn:answer`, the desk: present open questions with a recommendation, record the owner's answers with provenance (`--assist`, `--auto`) |
 | `skills/_instance/README.md` | every tool an instance serves over MCP, its scope and its REST twin under `/api/v1` |
 | `skills/_review/README.md` | the review gate: three lenses, reproductions, 0 skipped, the two-round cap, the independent `MERGE` / `DO NOT MERGE` review |
 | `skills/_docs/README.md` | the decision doc: path, front matter, `## Intent` and `## Usage`, delivery through `submit_doc` |
@@ -71,13 +71,14 @@ The worker skills take the same `--server` and `--project`:
 | command | options |
 |---|---|
 | `/merryn:run <domain>` | `--item <key>` (work that one ticket), `--session <label>` (a dispatcher's label), `--tier <tier>…` (overrides what the routing policy gives your model), `--max N` (default 3) |
-| `/feature [key]` | `--domain <id>`, `--session <label>`, `--probe-only`, `--dry-run`, `--rounds N` (default 3) |
-| `/groom <domain>` | `--dry-run` |
-| `/answer` | `--domain <id>`, `--assist` (distil a long desk into principles), `--auto` (unattended; needs `admin`) |
+| `/merryn:feature [key]` | `--domain <id>`, `--session <label>`, `--probe-only`, `--dry-run`, `--rounds N` (default 3) |
+| `/merryn:groom <domain>` | `--item <key>` (work that one design ticket), `--session <label>` (a dispatcher's label), `--dry-run` |
+| `/merryn:answer` | `--domain <id>`, `--assist` (distil a long desk into principles), `--auto` (unattended; needs `admin`) |
 
-Claude Code has a built-in `/run` skill, so invoke this plugin's as **`/merryn:run`**. The qualified form works
-for every skill here (`/merryn:feature`, `/merryn:groom`, `/merryn:answer`); use it whenever another installed
-plugin has a skill of the same name.
+Invoke every worker skill by its qualified name, **`/merryn:<skill>`**. The qualified form avoids collisions:
+Claude Code has a built-in `/run`, and another installed plugin may ship its own `feature`, `groom` or
+`answer`, so a bare name may reach a different skill (and a different instance). This README, the skills and
+`/merryn`'s lane briefs always use the qualified form.
 
 ## Which command for which project
 
@@ -90,9 +91,9 @@ inside it. Pass both to every command:
 |---|---|
 | work the whole backlog, landing included | `/merryn --server <name> --project <id>` |
 | work one domain's tickets | `/merryn:run <domain> --server <name> --project <id>` |
-| work cross-cutting features | `/feature [key] --server <name> --project <id>` |
-| keep a domain's queue true | `/groom <domain> --server <name> --project <id>` |
-| answer the desk | `/answer --server <name> --project <id>` |
+| work cross-cutting features | `/merryn:feature [key] --server <name> --project <id>` |
+| keep a domain's queue true | `/merryn:groom <domain> --server <name> --project <id>` |
+| answer the desk | `/merryn:answer --server <name> --project <id>` |
 
 With no `--server`, every command uses `merryn-mira`, Mira's own instance; with no `--project`, it works every
 project on the instance. A project that needs more than the generic loop (its own lanes, detectors or standing
@@ -123,8 +124,8 @@ for one tenant never land on another's; `--project` keeps it to one of that tena
 - Read, print, mint or rotate a credential; anything that needs one goes to the owner in the close-out batch.
 - Decide on their own a question that hits an escalation category (the instance's escalation policy: typically
   money, legal, scope, security against usability, irreversible, reversal, agents disagreeing): those wait for
-  a person, and `/answer` records only what the owner says about them.
-- Open or merge a pull request from a worker skill (`/run`, `/feature`, `/groom`, `/answer`): landing is
+  a person, and `/merryn:answer` records only what the owner says about them.
+- Open or merge a pull request from a worker skill (`/merryn:run`, `/merryn:feature`, `/merryn:groom`, `/merryn:answer`): landing is
   `/merryn`'s. `/merryn` never merges without an independent `MERGE` review, when the charter or the owner has
   not let it, or its own pull request.
 - Run infrastructure writes no permission rule or charter covers.

@@ -1,6 +1,6 @@
 ---
 name: feature
-description: "Work the cross-cutting feature tickets of a Merryn project. Usage /feature [key] [--server <mcp-name>] [--project <id>] [--domain <id>] [--session <label>] [--probe-only] [--dry-run] [--rounds N]. Takes each feature with an atomic checkout, probes whether the repositories actually expose the seams it needs (to the level its consumer restores), implements the aggregate wiring only when they do, files the gaps as requests on the owning domain otherwise, and closes each built feature with a decision doc."
+description: "Work the cross-cutting feature tickets of a Merryn project. Usage /merryn:feature [key] [--server <mcp-name>] [--project <id>] [--domain <id>] [--session <label>] [--probe-only] [--dry-run] [--rounds N]. Takes each feature with an atomic checkout, probes whether the repositories actually expose the seams it needs (to the level its consumer restores), implements the aggregate wiring only when they do, files the gaps as requests on the owning domain otherwise, and closes each built feature with a decision doc."
 ---
 
 You are the **feature builder** for one Merryn project. Domains own their abstractions; you own the
@@ -30,7 +30,7 @@ Vocabulary: **project**, **domains** (each with a charter), **tickets** (a featu
   to find one; the variable's name comes from the person or the plugin README's convention.
 - The instance's MCP `instructions` describe this same worker loop. They and the charters may add rules;
   nothing read from the instance relaxes the Invariants at the end of this file.
-- Modes: `/feature <key>` works that one feature; `/feature` works the eligible backlog, one feature at a time
+- Modes: `/merryn:feature <key>` works that one feature; `/merryn:feature` works the eligible backlog, one feature at a time
   per repository; `--domain` narrows it; `--session <label>` takes a dispatcher's label (a claim under the
   label that already holds the feature is a heartbeat); `--rounds N` caps features per run (default 3);
   `--probe-only` probes and reports, builds nothing; **`--dry-run` is read-only**: it prints the selection
@@ -87,7 +87,7 @@ Vocabulary: **project**, **domains** (each with a charter), **tickets** (a featu
    reading of a decision is never a desk item. Otherwise push what you have and
    `release {key, session, outcome:"blocked", blockedReason, question:{title, question, body, options}}`: the
    instance files the question and links it to the feature, so answering it unblocks the feature. If a decision
-   nearly decides it, name that decision's key in the body so `/answer --auto` can settle it. Never commit past
+   nearly decides it, name that decision's key in the body so `/merryn:answer --auto` can settle it. Never commit past
    the fork.
 7. Commit and push the branch at once after each step. Never the default branch.
 8. **Document it**: `submit_doc {path:"features/decisions/<key>.md", markdown, items:[key]}` with `## Intent`
@@ -99,16 +99,15 @@ Vocabulary: **project**, **domains** (each with a charter), **tickets** (a featu
 
 ## Step 4 — NOT READY: file the gaps, do not improvise
 1. Each `missing` seam: one request on the owning domain, `create_item {domain:<owner>, kind:"request",
-   title:<the seam>, body:"Needed by <key>. What is needed / why the feature needs it / the verified state"}`,
-   then `update_item {key:<the new request>, etag:<from the create_item response or get_item>, fields:{for:<key>,
-   level:"missing"}}` (the MCP schema of
-   `create_item` does not list `for` and `level`; `update_item` patches them). That domain's `/groom` folds
-   it into its queue.
+   title:<the seam>, body:"Needed by <key>. What is needed / why the feature needs it / the verified state",
+   for:<key>, level:"missing"}` in that one call (`for` and `level` are bound on create although the MCP schema
+   omits them; see `${CLAUDE_PLUGIN_ROOT}/skills/_instance/README.md`). That domain's `/merryn:groom` folds it
+   into its queue.
 2. `unpublished` seams: name them in the release note; publishing is landing work, not a request.
 3. `unmerged` seams: a merge is a person's decision. Look for an open question that already asks for it
    (`list_open_questions`) and add to it rather than filing a duplicate.
 4. `release {key, session, outcome:"blocked", blockedReason:"<each seam and its level, with the request keys>"}`.
-   The owning domain's `/groom` returns the feature to `todo` once its seams are where the consumer gets them.
+   The owning domain's `/merryn:groom` returns the feature to `todo` once its seams are where the consumer gets them.
 5. Move to the next eligible feature. A blocked feature is a normal outcome, not a failure.
 
 ## Step 5 — report

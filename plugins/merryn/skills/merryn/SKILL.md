@@ -99,9 +99,11 @@ In `--dry-run`, only list these with the action each would get.
 
 ## Step 3 — dispatch a lane (one Agent per item)
 A lane runs this plugin's worker loop on the one item you pulled for it, with the same `--server` and the
-lane's session label: `/merryn:run <domain> --item <key> --session <label>` for a task, `/feature <key> --session
-<label>` for a feature; design-tier items go to a `/groom` lane. Its `claim` under that label is a heartbeat
-of the lease you pulled. Brief every lane with, verbatim:
+lane's session label: `/merryn:run <domain> --item <key> --session <label>` for a task,
+`/merryn:feature <key> --session <label>` for a feature, `/merryn:groom <domain> --item <key> --session <label>`
+for a design-tier item. Always the qualified `/merryn:<skill>` name: a bare one may reach a built-in or another
+installed plugin's skill, and with it a different instance. Its `claim` under that label is a heartbeat of the
+lease you pulled. Brief every lane with, verbatim:
 - The instance name, the item key, the session label, the branch, the base (`origin/<default>`), the
   worktree path (one per lane), the charter rules, the files that are off limits.
 - Claim first (`claim` with the session label); heartbeat every 15 minutes; if a heartbeat fails twice,

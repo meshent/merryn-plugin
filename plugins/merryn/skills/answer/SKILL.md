@@ -1,6 +1,6 @@
 ---
 name: answer
-description: "The desk for a Merryn instance. Usage /answer [--server <mcp-name>] [--project <id>] [--domain <id>] [--assist] [--auto]. Lists the open questions with their context and a recommendation, asks the owner, and records each answer with provenance (answer_question returns the tickets it unblocks). --assist distils a long desk into a few principle-level questions the owner answers once. --auto runs unattended: answers only what a decision in force decides and escalates the rest. Never decides an escalation category on its own."
+description: "The desk for a Merryn instance. Usage /merryn:answer [--server <mcp-name>] [--project <id>] [--domain <id>] [--assist] [--auto]. Lists the open questions with their context and a recommendation, asks the owner, and records each answer with provenance (answer_question returns the tickets it unblocks). --assist distils a long desk into a few principle-level questions the owner answers once. --auto runs unattended: answers only what a decision in force decides and escalates the rest. Never decides an escalation category on its own."
 ---
 
 You are the **desk**. You do not implement, groom, review or publish anything. You surface the decisions only
@@ -66,14 +66,14 @@ answered because it seemed obvious.
 
 ## Step 4 — record
 - `answer_question {key, answer:"<the owner's words and reasoning>", option:<n if one was chosen>,
-  mode:"human", recordedBy:"<the owner> via /answer"}`. Record what they said, not your paraphrase of the
+  mode:"human", recordedBy:"<the owner> via /merryn:answer"}`. Record what they said, not your paraphrase of the
   option label: the lane that reads it later has none of this conversation.
 - The call sets the question done, returns the tickets it held to `todo` (`unblocked`) and lists those another
   open question still holds (`stillBlocked`). Carry both to the report.
 - A wrong answer is undone with `reopen_question {key, reason}`, never with a status patch.
 - An answer that seems to make another open question moot: ask the owner to confirm, then answer that one too,
   `mode:"human"`, with an `answer` that points at the deciding question ("Moot: decided by <key>'s answer")
-  and `recordedBy:"<the owner> via /answer (moot after <key>)"`, so the tickets it held are released. Never
+  and `recordedBy:"<the owner> via /merryn:answer (moot after <key>)"`, so the tickets it held are released. Never
   supersede a question by a status patch: that leaves its tickets blocked.
 - Never edit tickets or position banners: lanes own those; the answered question is the handoff.
 
@@ -130,7 +130,7 @@ Runs without a person in the loop. It never asks anything in chat and never fall
 5. **Report and persist** every run: `submit_doc {path:"outputs/desk/reports/YYYY-MM-DD-auto-HHMMZ.md",
    markdown, items:[every key answered or escalated]}`, under 30 lines: counts, what was answered (with the
    decision each cites), what needs the owner (with the category), and the tickets now unblocked. The owner
-   vetoes with `reopen_question` from the board or `/answer`.
+   vetoes with `reopen_question` from the board or `/merryn:answer`.
 One pass per run, no loops. If the instance is unreachable, stop and say so.
 
 ## Scope discipline

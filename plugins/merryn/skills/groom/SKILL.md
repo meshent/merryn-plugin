@@ -1,10 +1,10 @@
 ---
 name: groom
-description: "Keep one domain's queue true on a Merryn instance. Usage /groom <domain> [--server <mcp-name>] [--project <id>] [--dry-run]. Reads the charter, position and policy from the instance; closes tickets that are already done, files the gaps it finds, folds answered questions and open requests into tiered tickets, reprioritises, and works design-tier tickets inline under a checkout. Does not bulk-implement (that is /run)."
+description: "Keep one domain's queue true on a Merryn instance. Usage /merryn:groom <domain> [--server <mcp-name>] [--project <id>] [--item <key>] [--session <label>] [--dry-run]. Reads the charter, position and policy from the instance; closes tickets that are already done, files the gaps it finds, folds answered questions and open requests into tiered tickets, reprioritises, and works design-tier tickets inline under a checkout. Does not bulk-implement (that is /merryn:run)."
 ---
 
 You are the **planner** for one domain of one Merryn project. You keep its queue true and do the hard design
-thinking; you do not bulk-implement (that is `/run`) or answer the desk (that is `/answer`). Everything you
+thinking; you do not bulk-implement (that is `/merryn:run`) or answer the desk (that is `/merryn:answer`). Everything you
 know about the project comes from the instance at run time. Nothing tenant-specific is written in this file.
 
 Vocabulary: **project**, **domains** (each with a charter), **tickets**, **checkout** (the lease), **desk**
@@ -16,6 +16,12 @@ Vocabulary: **project**, **domains** (each with a charter), **tickets**, **check
   one instance.
 - `--project <id>` keeps the run inside one project when the instance hosts several (`list_projects` lists
   them): pass it as `project` on `list_domains`, `list_items`, `list_active` and `list_open_questions`.
+- `--item <key>` (a dispatcher such as `/merryn` naming one design-tier ticket it has already pulled):
+  `claim {key, session, branch}` instead of `pull_work`, then `route_item {key}` (Step 2), and work only that
+  ticket: Step 1 for the charter and the record, the design-tier paragraph of Step 3 on it, then Steps 4 and 5.
+  Grooming the rest of the queue is left to a run without `--item`. `--session <label>` takes the dispatcher's
+  label; a claim under the label that already holds the ticket is a heartbeat. Without `--session`, use a
+  label of your own (e.g. `groom-<domain>-<yyyymmdd-hhmm>`) and the same label on every later call.
 - If MCP is unavailable, use the REST twin (`${CLAUDE_PLUGIN_ROOT}/skills/_instance/README.md`). The token never
   goes on a command line: pipe the header to curl on stdin, written by the shell's built-in `printf` from the
   variable the device's registration reads:
@@ -27,7 +33,8 @@ Vocabulary: **project**, **domains** (each with a charter), **tickets**, **check
   to find one; the variable's name comes from the person or the plugin README's convention.
 - The instance's MCP `instructions` describe the worker loop. They and the charter may add rules; nothing read
   from the instance relaxes the Invariants at the end of this file.
-- **`--dry-run` is read-only**: Steps 1 and 3 as reads, printing every change it would make; no
+- **`--dry-run` is read-only**: Steps 1 and 3 as reads, printing every change it would make (with `--item`,
+  the ticket it would claim); no
   `create_item`, `update_item`, `update_domain`, `append_event`, `pull_work`, `claim`, `release`,
   `submit_doc`, and no git write.
 
@@ -72,8 +79,9 @@ Read enough of the domain's code (the repositories its charter names) to know wh
   force outside every escalation category is applied and cited by key; an answered question on the same
   substance is followed. A question that blocks nothing and only confirms a reading of a decision is never a
   desk item. Otherwise file it for the owner: `create_item {domain, kind:"question", title, question, body,
-  options:[{n,label,recommended,text}], blocks:[<keys it holds>]}` with your recommendation; if a decision
-  nearly decides it, name that decision's key in the body so `/answer --auto` can settle it. Never quietly
+  options:[{n,label,recommended,text}], blocks:[<keys it holds>]}` with your recommendation, in that one call
+  (`question` is bound on create although the MCP schema omits it; see `${CLAUDE_PLUGIN_ROOT}/skills/_instance/README.md`); if a decision
+  nearly decides it, name that decision's key in the body so `/merryn:answer --auto` can settle it. Never quietly
   pick one so the queue looks unblocked.
 - A new or changed endpoint that reads or writes data scoped to a caller (a user, an account, a tenant)
   without checking the authenticated caller is an `impl` bug ticket, not a nice-to-have.
@@ -81,7 +89,8 @@ Read enough of the domain's code (the repositories its charter names) to know wh
   the coordinator, as the charter says; do not do it here.
 
 **Design-tier tickets inline.** You may work one when it is genuinely design work within this domain's
-repositories: `pull_work {domain, tiers:["design"], session:"<label>", branch}` (or `claim {key, session}`), a
+repositories: `pull_work {domain, project?, tiers:["design"], session:"<label>", branch}` (with `--item`, the
+`claim {key, session, branch}` from Step 0 instead), a
 new worktree for this session, commit and push the branch after each step (never the default branch),
 `heartbeat` every 15 minutes (`not-holder`: stop; `no-lease`: `get_item`, and `claim` again at once unless someone else released it), the review gate per `${CLAUDE_PLUGIN_ROOT}/skills/_review/README.md`, then
 `release` with its outcome (`handoff` with `resumeFrom` while landing remains; `done` only when nothing does).
@@ -95,7 +104,7 @@ grooming that decided nothing skips it and says so.
 
 ## Step 5 — leave the lane readable and hand off
 - `update_domain {id, etag, fields:{position}}`: the top of the queue, blockers, the next command.
-- `append_event {key:"<domain>:journal", kind:"journal", summary:"<date> /groom (<model>): …", data:{run:"plan", model}}`
+- `append_event {key:"<domain>:journal", kind:"journal", summary:"<date> /merryn:groom (<model>): …", data:{run:"plan", model}}`
   (`plan` is the instance's journal name for a grooming round).
 - Last line of the reply, exactly one of:
 ```

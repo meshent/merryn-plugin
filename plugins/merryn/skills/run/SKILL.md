@@ -1,10 +1,10 @@
 ---
 name: run
-description: "Work one domain's tickets from a Merryn instance. Usage /run <domain> [--server <mcp-name>] [--project <id>] [--item <key>] [--session <label>] [--tier <tier>...] [--max N]. Reads the domain's charter, position and policy from the instance, pulls the tickets its routing policy assigns to the model you are on (an atomic checkout, so no two lanes take the same ticket), works each on a branch under the charter, heartbeats, and always releases with an outcome. Design-tier tickets are left for /groom; features for /feature."
+description: "Work one domain's tickets from a Merryn instance. Usage /merryn:run <domain> [--server <mcp-name>] [--project <id>] [--item <key>] [--session <label>] [--tier <tier>...] [--max N]. Reads the domain's charter, position and policy from the instance, pulls the tickets its routing policy assigns to the model you are on (an atomic checkout, so no two lanes take the same ticket), works each on a branch under the charter, heartbeats, and always releases with an outcome. Design-tier tickets are left for /merryn:groom; features for /merryn:feature."
 ---
 
 You are the **implementer** for one domain of one Merryn project. You execute tickets that are already
-decided; you do not re-plan the queue (that is `/groom`) or answer the desk (that is `/answer`). Everything
+decided; you do not re-plan the queue (that is `/merryn:groom`) or answer the desk (that is `/merryn:answer`). Everything
 you know about the project comes from the instance at run time: the domain charter, its routing policy, its
 tickets and its decisions. Nothing tenant-specific is written in this file.
 
@@ -60,12 +60,12 @@ The domain is the argument. If none was given, `list_domains`, ask which domain,
   - no rule names your model and `defaultModel` is someone else's: do not pull. Hand off with
     `NEXT: run <domain> @<model>` for the model the policy routes the top tickets to;
   - no policy (null): `impl` and `review`.
-  `design` is never pulled here: it is `/groom`'s. **An empty set means do not pull** (`pull_work` reads
+  `design` is never pulled here: it is `/merryn:groom`'s. **An empty set means do not pull** (`pull_work` reads
   `tiers:[]` as any tier): hand off with `NEXT:` for the model the policy names. Passing `tiers` skips untiered tickets: if the top tickets
-  are untiered, they need `/groom` to tier them; say so in the handoff instead of working around it.
+  are untiered, they need `/merryn:groom` to tier them; say so in the handoff instead of working around it.
 - `pull_work {domain, project?, kinds:["task"], tiers, session:"<label>", branch, ttlMinutes:120}` with a
   session label of your own (e.g. `run-<domain>-<yyyymmdd-hhmm>`), the same label on every later call.
-  Features are `/feature`'s, so pass `kinds:["task"]`. `branch` is what the charter names; without one,
+  Features are `/merryn:feature`'s, so pass `kinds:["task"]`. `branch` is what the charter names; without one,
   `wip/<domain>`. The response carries the ticket, the lease and `detail.concurrent` (other live leases on the
   same repository). Overlap is allowed; not knowing is not: if another lane is in the same repository, keep to
   your own branch and files and say so in the report. `pulled:false` lists why candidates were skipped; if
@@ -98,7 +98,7 @@ One ticket at a time, up to `--max N` (default 3) or until context runs heavy or
    escalation category) is followed and cited by key in a note; an answered question on the same substance is
    followed. A question that blocks nothing and only confirms a reading of a decision is never a desk item.
    Otherwise release `blocked` with the `question` (options and your recommendation; if a decision nearly
-   decides it, name that decision's key in the body so `/answer --auto` can settle it) and pull the next
+   decides it, name that decision's key in the body so `/merryn:answer --auto` can settle it) and pull the next
    ticket. Never commit past an undecided fork.
 6. Commit (the charter's trailer, if it names one) and push the branch at once. Never the default branch.
 7. **Release, always** (in a `finally`, even on failure):
@@ -121,7 +121,7 @@ Remove the worktree once its branch is pushed.
   decided nothing says so and skips it.
 - `update_domain {id, etag, fields:{position}}` with two to four lines: what landed, what is next, what a
   person must do (re-read the domain for a fresh `etag` on a 412).
-- `append_event {key:"<domain>:journal", kind:"journal", summary:"<date> /run <keys> (<model>): …", data:{run:"run", model}}`.
+- `append_event {key:"<domain>:journal", kind:"journal", summary:"<date> /merryn:run <keys> (<model>): …", data:{run:"run", model}}`.
 - Last line of the reply, exactly one of:
 ```
 NEXT: run <domain> @<model>      # tickets remain for a model; name the model the policy routes them to
