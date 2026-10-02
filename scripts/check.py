@@ -4,8 +4,8 @@
 Each plugin listed in .claude-plugin/marketplace.json must have a manifest whose name matches its listing, ship no MCP
 server (each device registers its instance at user scope and holds its own token), give every skill YAML front matter
 with its directory name and a description, and give every shared-contract directory (a leading "_") a README. No file
-may carry a credential or an account id, and nothing that ships (plugins/, .claude-plugin/, README.md) may name a
-tenant. Exits non-zero with one line per problem.
+may carry a credential or an account id, and no file or path may name a tenant (this script, which lists the terms,
+excepted). Exits non-zero with one line per problem.
 """
 import json
 import re
@@ -31,8 +31,8 @@ TENANT_TERMS = [
     ("meshnet", re.compile(r"meshnet", re.I)),
     ("vo.cab", re.compile(r"vo\.cab", re.I)),
 ]
-# What ships or describes what ships: every plugin, the marketplace manifest and the root README.
-TENANT_SCOPE = ["plugins", ".claude-plugin", "README.md"]
+# Zero-width characters a pasted name can carry; they are removed before matching.
+INVISIBLE = re.compile("[" + chr(0x200B) + "-" + chr(0x200D) + chr(0x2060) + chr(0xFEFF) + "]")
 
 
 def front_matter(text):
@@ -53,17 +53,27 @@ def front_matter(text):
         value = (m.group(2) or "").strip()
         if value[:1] not in ('"', "'") and (": " in value or value.endswith(":")):
             raise ValueError(f"line {n}: an unquoted value may not contain ': '; quote it")
+        if value[:1] == '"' and (len(value) < 2 or not value.endswith('"') or '"' in value[1:-1].replace(chr(92) + '"', "")):
+            raise ValueError(f"line {n}: a double-quoted value must end with its quote and escape any quote inside it")
         keys[m.group(1)] = value.strip("'\"")
     return keys
 
 
-def tenant_files():
-    for entry in TENANT_SCOPE:
-        target = ROOT / entry
-        if target.is_file():
-            yield target
-        elif target.is_dir():
-            yield from sorted(p for p in target.rglob("*") if p.is_file())
+def repo_files():
+    return sorted(p for p in ROOT.rglob("*") if p.is_file() and ".git" not in p.relative_to(ROOT).parts)
+
+
+def read_lines(path):
+    """Every file as text: UTF-16 by its byte-order mark, else UTF-8, else Latin-1, so nothing is skipped unread."""
+    data = path.read_bytes()
+    if data.startswith((b"\xff\xfe", b"\xfe\xff")):
+        text = data.decode("utf-16")
+    else:
+        try:
+            text = data.decode("utf-8-sig")
+        except UnicodeDecodeError:
+            text = data.decode("latin-1")
+    return text.splitlines()
 
 
 def main():
@@ -107,31 +117,31 @@ def main():
             if not keys.get("description"):
                 problems.append(f"{rel}/skills/{d.name}/SKILL.md: description is required")
 
-    for path in sorted(p for p in ROOT.rglob("*") if p.is_file() and ".git" not in p.relative_to(ROOT).parts):
+    this = Path(__file__).resolve()
+    for path in repo_files():
         if path.name == "LICENSE":
             continue
-        try:
-            lines = path.read_text(encoding="utf-8").splitlines()
-        except UnicodeDecodeError:
-            continue
+        lines = read_lines(path)
         for n, line in enumerate(lines, start=1):
             for what, pattern in SECRETS:
                 # This script defines the patterns, so skip its own pattern lines.
-                if path == Path(__file__).resolve() and "re.compile" in line:
+                if path == this and "re.compile" in line:
                     continue
                 if pattern.search(line):
                     problems.append(f"{path.relative_to(ROOT)}:{n} has {what}")
 
-    for path in tenant_files():
-        try:
-            lines = path.read_text(encoding="utf-8").splitlines()
-        except UnicodeDecodeError:
-            problems.append(f"{path.relative_to(ROOT)}: not UTF-8 text, so the tenant-term check cannot read it")
+    # Every file in the repository, its path included; this script is the one place the terms are written.
+    for path in repo_files():
+        if path == this:
             continue
-        for n, line in enumerate(lines, start=1):
+        rel = path.relative_to(ROOT)
+        for term, pattern in TENANT_TERMS:
+            if pattern.search(INVISIBLE.sub("", rel.as_posix())):
+                problems.append(f"{rel}: its path names a tenant ('{term}'); keep the plugin generic")
+        for n, line in enumerate(read_lines(path), start=1):
             for term, pattern in TENANT_TERMS:
-                if pattern.search(line):
-                    problems.append(f"{path.relative_to(ROOT)}:{n} names a tenant ('{term}'); keep the plugin generic")
+                if pattern.search(INVISIBLE.sub("", line)):
+                    problems.append(f"{rel}:{n} names a tenant ('{term}'); keep the plugin generic")
 
     for p in problems:
         print(p)

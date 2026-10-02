@@ -66,7 +66,7 @@ A directory under `skills/` that starts with `_` is a shared contract the skills
 Everything here is generic: it names no tenant's products, repositories or people, and carries no instance
 host, token or account id. Tenant specifics come from the instance at run time (charters, policy, items). A
 tenant that needs more should layer its own plugin on top of this one rather than fork it. `scripts/check.py`
-enforces part of this: it fails when anything that ships names a tenant it knows the plugin was modelled on.
+enforces part of this: it fails when any file or path names a tenant it knows the plugin was modelled on.
 
 To try a working copy, run `claude --plugin-dir ./plugins/merryn`. It overrides an installed plugin of the same
 name, so drop the flag when you're done.
