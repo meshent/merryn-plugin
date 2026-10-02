@@ -25,21 +25,22 @@ To pick up changes later, run `claude plugin update merryn@meshent`.
 
 ## Which command for which project
 
-One Merryn instance serves each project, and each device registers **one MCP server per instance**: a server
-name, the instance's URL, and the environment variable that holds that device's token. The server name picks
-the project; pass it to every command:
+Each device registers **one MCP server per Merryn instance**: a server name, the instance's URL, and the
+environment variable that holds that device's token. The server name picks the instance; an instance may host
+several projects, and `--project <id>` picks one of them. Pass both to every command:
 
 ```
-/merryn  --server <name>              the whole loop, landing included
-/run     <domain> --server <name>     one domain's tickets
-/feature [key] --server <name>        cross-cutting features
-/groom   <domain> --server <name>     keep a domain's queue true
-/answer  --server <name>              the desk
+/merryn      --server <name> --project <id>            the whole loop, landing included
+/merryn:run  <domain> --server <name> --project <id>   one domain's tickets
+/feature     [key] --server <name> --project <id>      cross-cutting features
+/groom       <domain> --server <name> --project <id>   keep a domain's queue true
+/answer      --server <name> --project <id>            the desk
 ```
 
-Without `--server` they use `merryn-mira`, Mira's own instance. A project with needs beyond the generic loop
-ships its own layer plugin that wraps these skills with its server name and specifics; for that project, run
-the layer's commands. Registration and options:
+`/merryn:run` is the qualified name: Claude Code has a built-in `/run`. Without `--server` the commands use
+`merryn-mira`, Mira's own instance; without `--project` they work every project on the instance. A project
+with needs beyond the generic loop ships its own layer plugin that wraps these skills with its server name,
+project and specifics; for that project, run the layer's commands. Registration and options:
 [plugins/merryn/README.md](plugins/merryn/README.md#which-command-for-which-project).
 
 ## Layout

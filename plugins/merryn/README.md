@@ -63,38 +63,41 @@ claude plugin update merryn@meshent                  # later, to pick up changes
 ```
 
 Invoke it inside Claude Code as `/merryn` (fully qualified: `/merryn:merryn`), with any of `--server <name>` (default `merryn-mira`;
-the name this device registered), `--domain <id>`, `--items <key>…`, `--rounds N`, `--dry-run`, `--no-merge`.
-Run `--dry-run` first against a new instance: it prints the lane table and dispatches nothing.
+the name this device registered), `--project <id>`, `--domain <id>`, `--items <key>…`, `--rounds N`, `--dry-run`,
+`--no-merge`. Run `--dry-run` first against a new instance: it prints the lane table and dispatches nothing.
 
-The worker skills take the same `--server`:
+The worker skills take the same `--server` and `--project`:
 
 | command | options |
 |---|---|
-| `/run <domain>` | `--tier <tier>…` (overrides what the routing policy gives your model), `--items N` (default 3) |
-| `/feature [key]` | `--domain <id>`, `--probe-only`, `--dry-run`, `--rounds N` (default 3) |
+| `/merryn:run <domain>` | `--item <key>` (work that one ticket), `--session <label>` (a dispatcher's label), `--tier <tier>…` (overrides what the routing policy gives your model), `--max N` (default 3) |
+| `/feature [key]` | `--domain <id>`, `--session <label>`, `--probe-only`, `--dry-run`, `--rounds N` (default 3) |
 | `/groom <domain>` | `--dry-run` |
 | `/answer` | `--domain <id>`, `--assist` (distil a long desk into principles), `--auto` (unattended; needs `admin`) |
 
-If another installed plugin has a skill of the same name, use the qualified form (`/merryn:run`,
-`/merryn:feature`, `/merryn:groom`, `/merryn:answer`).
+Claude Code has a built-in `/run` skill, so invoke this plugin's as **`/merryn:run`**. The qualified form works
+for every skill here (`/merryn:feature`, `/merryn:groom`, `/merryn:answer`); use it whenever another installed
+plugin has a skill of the same name.
 
 ## Which command for which project
 
-Each project's instance gets **one MCP server registration** on each device: a server name, the instance's
-URL and the variable that holds that device's token (see "Register the instance" above). The server name is
-what selects the project, so pass it to every command:
+Each instance gets **one MCP server registration** on each device: a server name, the instance's URL and the
+variable that holds that device's token (see "Register the instance" above). The server name selects the
+instance; when the instance hosts several projects (`list_projects`), `--project <id>` selects the project
+inside it. Pass both to every command:
 
 | to | run |
 |---|---|
-| work the whole backlog, landing included | `/merryn --server <name>` |
-| work one domain's tickets | `/run <domain> --server <name>` |
-| work cross-cutting features | `/feature [key] --server <name>` |
-| keep a domain's queue true | `/groom <domain> --server <name>` |
-| answer the desk | `/answer --server <name>` |
+| work the whole backlog, landing included | `/merryn --server <name> --project <id>` |
+| work one domain's tickets | `/merryn:run <domain> --server <name> --project <id>` |
+| work cross-cutting features | `/feature [key] --server <name> --project <id>` |
+| keep a domain's queue true | `/groom <domain> --server <name> --project <id>` |
+| answer the desk | `/answer --server <name> --project <id>` |
 
-With no `--server`, every command uses `merryn-mira`, Mira's own instance. A project that needs more than the
-generic loop (its own lanes, detectors or standing rules) ships a layer plugin of its own whose skills wrap
-these with its server name and specifics; run the layer's commands for that project.
+With no `--server`, every command uses `merryn-mira`, Mira's own instance; with no `--project`, it works every
+project on the instance. A project that needs more than the generic loop (its own lanes, detectors or standing
+rules) ships a layer plugin of its own whose skills wrap these with its server name, project and specifics;
+run the layer's commands for that project.
 
 For local development only, `claude --plugin-dir /path/to/merryn-plugin/plugins/merryn` loads the working copy;
 it silently overrides an installed plugin of the same name, so drop it when you are done.
@@ -103,7 +106,7 @@ it silently overrides an installed plugin of the same name, so drop it when you 
 
 One instance per tenant, one token and one server name per instance on each device. Pass the server name:
 `/merryn --server merryn-acme`. A run talks to exactly one instance, so work, questions and docs
-for one tenant never land on another's.
+for one tenant never land on another's; `--project` keeps it to one of that tenant's projects.
 
 ## Troubleshooting
 
