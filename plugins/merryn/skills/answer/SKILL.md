@@ -22,7 +22,7 @@ hold tickets until someone answers them.
   are `GET /items?kind=question&status=todo`). Never put the token's value on a command line; hand curl the
   header through a file it reads, written by the shell's built-in `printf` from the variable the device's
   registration reads:
-  `curl -sS -H @<(printf 'Authorization: Bearer %s\n' "$<VARIABLE>") https://<instance-host>/api/v1/items?kind=question\&status=todo`.
+  `curl -sS -H @<(printf 'Authorization: Bearer %s\n' "$<VARIABLE>") "https://<instance-host>/api/v1/items?kind=question&status=todo"`.
   Never echo, print, log or commit a token. `--auto` never falls back to REST: if MCP is down it stops and says so.
 - `--domain` narrows the desk to one domain.
 
