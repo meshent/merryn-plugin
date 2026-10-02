@@ -11,6 +11,10 @@ tenant that needs more layers its own plugin on top of this one instead of forki
 | path | what it is |
 |---|---|
 | `skills/merryn/SKILL.md` | `/merryn`, the backlog loop: desk first, plan lanes, dispatch one agent per pulled item, review, land, close out, repeat until the queue is dry |
+| `skills/run/SKILL.md` | `/run <domain>`, the worker loop over one domain: pull the tickets its routing policy gives your model, work them under the charter, release each |
+| `skills/feature/SKILL.md` | `/feature [key]`, cross-cutting features: probe the seams the repositories actually expose, build when they are there, file the gaps when not |
+| `skills/groom/SKILL.md` | `/groom <domain>`, keep a domain's queue true: close what is done, file gaps, fold answers and requests into tickets, work design tickets inline |
+| `skills/answer/SKILL.md` | `/answer`, the desk: present open questions with a recommendation, record the owner's answers with provenance (`--assist`, `--auto`) |
 | `skills/_instance/README.md` | every tool an instance serves over MCP, its scope and its REST twin under `/api/v1` |
 | `skills/_review/README.md` | the review gate: three lenses, reproductions, 0 skipped, the two-round cap, the independent `MERGE` / `DO NOT MERGE` review |
 | `skills/_docs/README.md` | the decision doc: path, front matter, `## Intent` and `## Usage`, delivery through `submit_doc` |
@@ -62,6 +66,36 @@ Invoke it inside Claude Code as `/merryn` (fully qualified: `/merryn:merryn`), w
 the name this device registered), `--domain <id>`, `--items <key>…`, `--rounds N`, `--dry-run`, `--no-merge`.
 Run `--dry-run` first against a new instance: it prints the lane table and dispatches nothing.
 
+The worker skills take the same `--server`:
+
+| command | options |
+|---|---|
+| `/run <domain>` | `--tier <tier>…` (overrides what the routing policy gives your model), `--items N` (default 3) |
+| `/feature [key]` | `--domain <id>`, `--probe-only`, `--dry-run`, `--rounds N` (default 3) |
+| `/groom <domain>` | `--dry-run` |
+| `/answer` | `--domain <id>`, `--assist` (distil a long desk into principles), `--auto` (unattended; needs `admin`) |
+
+If another installed plugin has a skill of the same name, use the qualified form (`/merryn:run`,
+`/merryn:feature`, `/merryn:groom`, `/merryn:answer`).
+
+## Which command for which project
+
+Each project's instance gets **one MCP server registration** on each device: a server name, the instance's
+URL and the variable that holds that device's token (see "Register the instance" above). The server name is
+what selects the project, so pass it to every command:
+
+| to | run |
+|---|---|
+| work the whole backlog, landing included | `/merryn --server <name>` |
+| work one domain's tickets | `/run <domain> --server <name>` |
+| work cross-cutting features | `/feature [key] --server <name>` |
+| keep a domain's queue true | `/groom <domain> --server <name>` |
+| answer the desk | `/answer --server <name>` |
+
+With no `--server`, every command uses `merryn-mira`, Mira's own instance. A project that needs more than the
+generic loop (its own lanes, detectors or standing rules) ships a layer plugin of its own whose skills wrap
+these with its server name and specifics; run the layer's commands for that project.
+
 For local development only, `claude --plugin-dir /path/to/merryn-plugin/plugins/merryn` loads the working copy;
 it silently overrides an installed plugin of the same name, so drop it when you are done.
 
@@ -79,14 +113,16 @@ for one tenant never land on another's.
   Restart the app (every window) and it connects. The REST twin works meanwhile from a new shell that has
   the variable (see `skills/_instance/README.md`).
 
-## What the skill never does
+## What the skills never do
 
-- Work an item it has not pulled, or hold more than one live lease per session label.
+- Work an item they have not pulled, or hold more than one live lease per session label.
 - Push the default branch, dispatch a CI workflow, set a package version, or float a package dependency.
 - Read, print, mint or rotate a credential; anything that needs one goes to the owner in the close-out batch.
-- Answer a question that hits an escalation category (money, legal, scope, security against usability,
-  irreversible, reversal, agents disagreeing): those wait for a person.
-- Merge without an independent `MERGE` review, merge when the charter or the owner has not let it, or merge
-  its own pull request.
+- Decide on their own a question that hits an escalation category (the instance's escalation policy: typically
+  money, legal, scope, security against usability, irreversible, reversal, agents disagreeing): those wait for
+  a person, and `/answer` records only what the owner says about them.
+- Open or merge a pull request from a worker skill (`/run`, `/feature`, `/groom`, `/answer`): landing is
+  `/merryn`'s. `/merryn` never merges without an independent `MERGE` review, when the charter or the owner has
+  not let it, or its own pull request.
 - Run infrastructure writes no permission rule or charter covers.
 - Commit state or docs by hand: state goes through the instance, docs through `submit_doc`.
