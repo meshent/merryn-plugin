@@ -34,7 +34,7 @@ One line each: what it does · scope · REST twin (relative to `/api/v1`).
 ### Items (tickets, features, questions, requests, notes, decisions)
 | tool | purpose | scope | REST |
 |---|---|---|---|
-| `list_items` | filtered list (domain, kind, status, tier, repo, q, limit, default 100); bodies omitted | read | `GET /items?…` (adds owner and leased filters, returns full items, default limit 1000) |
+| `list_items` | filtered list (domain, kind, status, tier, repo, q, limit, default 100); each entry is key, domain, kind, status, tier, priority, repo, title and the live lease holder; body, acceptance criteria, `blockedReason`, `blocks`, `dependsOn` and links are omitted (`get_item` each, or use the REST twin) | read | `GET /items?…` (adds owner and leased filters, returns full items, default limit 1000) |
 | `get_item` | one item: body, acceptance criteria, links, ETag, recent events | read | `GET /items/{key}` (events: `GET /items/{key}/events`) |
 | `create_item` | create a task, feature, question, request, note or decision | work | `POST /items` |
 | `update_item` | patch fields with the item's ETag (412 when stale); status never becomes in-progress this way | work | `PATCH /items/{key}` with `If-Match` |

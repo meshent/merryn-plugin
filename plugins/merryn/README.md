@@ -71,6 +71,14 @@ One instance per tenant, one token and one server name per instance on each devi
 `/merryn --server merryn-acme`. A run talks to exactly one instance, so work, questions and docs
 for one tenant never land on another's.
 
+## Troubleshooting
+
+- **The MCP server answers 401 right after you set the token variable.** The Claude Code process started
+  before the variable existed, so it connects with an empty header. This is typical of a variable set at
+  machine or user scope on Windows (`setx`, System Properties), which only processes started afterwards see.
+  Restart the app (every window) and it connects. The REST twin works meanwhile from a new shell that has
+  the variable (see `skills/_instance/README.md`).
+
 ## What the skill never does
 
 - Work an item it has not pulled, or hold more than one live lease per session label.

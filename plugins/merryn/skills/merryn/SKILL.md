@@ -53,19 +53,28 @@ Open questions hold items. For each `list_open_questions` result:
    question in the close-out batch with the evaluation and your recommended option.
 In `--dry-run`, print the answer or escalation each question would get and call none of the write tools.
 
-**Items awaiting a merge.** `list_items {status:"blocked"}` and look for a `blockedReason` of
-`awaiting merge of <PR URL>` (Step 4). For each whose PR has since merged, resume landing it: clear the block
-(`update_item {key, etag, fields:{status:"todo", blockedReason:null}}`; a blocked item cannot be claimed),
-claim it at once under its landing label (`<run>-land-<item>`), and continue Step 4 from publish and verify.
-If that claim answers `lease-held`, someone else took it in between: leave it to them and reconcile with
-`list_active`. In `--dry-run`, only list these.
+**Items awaiting a merge.** Find the blocked items whose `blockedReason` is `awaiting merge of <PR URL>`
+(Step 4). MCP `list_items {status:"blocked"}` omits `blockedReason`, so `get_item` each item it lists (or use
+the REST twin `GET /items?status=blocked`, which returns full items). Check each PR's state
+(`list_changes {key}`, or `gh pr view <PR URL> --json state,mergedAt`):
+- **Merged:** resume landing it. Clear the block (`update_item {key, etag, fields:{status:"todo",
+  blockedReason:null}}`; a blocked item cannot be claimed), claim it at once under its landing label
+  (`<run>-land-<item>`), and continue Step 4 from publish and verify. If that claim answers `lease-held`,
+  someone else took it in between: leave it to them and reconcile with `list_active`.
+- **Closed without merging:** the work did not land. Return the item to the queue
+  (`update_item {key, etag, fields:{status:"todo", blockedReason:null}}`), `append_event {key, kind:"note"}`
+  naming the closed PR and its branch head (the next lane can resume from it), and put it in the close-out
+  batch (Step 6) so the owner sees why it is back.
+- **Still open:** leave it blocked.
+In `--dry-run`, only list these with the action each would get.
 
 ## Step 2 — plan lanes
 - **Dry-run:** build the lane table from reads only, with the rule `pull_work` applies. `list_active` for live
   leases; `list_items {status:"todo"}` and `list_items {status:"in-progress"}` (narrowed by `--domain` /
-  `--items`); for each candidate `get_item` and keep it only if: it is `todo` with no lease, or `in-progress`
-  with a lease that has expired (a dead holder's work is pullable again); it is not a note, decision or
-  person-owned item; every `dependsOn` item is done; and no open question holds it, either by listing it in
+  `--items`); for each candidate `get_item` and keep it only if: its kind is one `pull_work` would take (the
+  kinds the run passes, else `pull_work`'s default: `task` and `feature`); it is `todo` with no lease, or
+  `in-progress` with a lease that has expired (a dead holder's work is pullable again); it is not
+  person-owned; every `dependsOn` item is done; and no open question holds it, either by listing it in
   its `blocks` or by being named in the item's own `links.questions`. Print the table below and stop; never
   call `pull_work`.
 - `list_active` shows live leases (any tool, any machine). `pull_work` returns `detail.concurrent[]`. Deconflict by
@@ -79,7 +88,8 @@ If that claim answers `lease-held`, someone else took it in between: leave it to
 - Print the lane table: item, repository, branch `wip/<item-or-domain>`, files, reviewer count, round.
 
 ## Step 3 — dispatch a lane (one Agent per item)
-Brief every lane with, verbatim:
+A lane runs the worker loop of `/run` (a task) or `/feature` (a feature) from this plugin, with the same
+`--server`, on the one item you name; design-tier items go to a `/groom` lane. Brief every lane with, verbatim:
 - The instance name, the item key, the session label, the branch, the base (`origin/<default>`), the
   worktree path (one per lane), the charter rules, the files that are off limits.
 - Claim first (`claim` with the session label); heartbeat every 15 minutes; if a heartbeat fails twice,
