@@ -4,7 +4,8 @@
 Each plugin listed in .claude-plugin/marketplace.json must have a manifest whose name matches its listing, ship no MCP
 server (each device registers its instance at user scope and holds its own token), give every skill YAML front matter
 with its directory name and a description, and give every shared-contract directory (a leading "_") a README. No file
-may carry a credential or an account id. Exits non-zero with one line per problem.
+may carry a credential or an account id, and nothing that ships (plugins/, .claude-plugin/, README.md) may name a
+tenant. Exits non-zero with one line per problem.
 """
 import json
 import re
@@ -22,6 +23,16 @@ SECRETS = [
     ("a JWT", re.compile(r"eyJ[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}")),
     ("a literal bearer credential", re.compile(r"Bearer\s+['\"]?(?![$<…])[A-Za-z0-9._~+/\-]{16,}", re.I)),
 ]
+
+# The plugins are generic: no tenant's product, repository or host names. These are the terms of tenants whose
+# skills were the model for this plugin; "meshnet" covers every repository named after it. A tenant's own terms
+# belong in that tenant's layer plugin, never here. Person names are deliberately not listed (this repo is public).
+TENANT_TERMS = [
+    ("meshnet", re.compile(r"meshnet", re.I)),
+    ("vo.cab", re.compile(r"vo\.cab", re.I)),
+]
+# What ships or describes what ships: every plugin, the marketplace manifest and the root README.
+TENANT_SCOPE = ["plugins", ".claude-plugin", "README.md"]
 
 
 def front_matter(text):
@@ -46,9 +57,18 @@ def front_matter(text):
     return keys
 
 
+def tenant_files():
+    for entry in TENANT_SCOPE:
+        target = ROOT / entry
+        if target.is_file():
+            yield target
+        elif target.is_dir():
+            yield from sorted(p for p in target.rglob("*") if p.is_file())
+
+
 def main():
     problems = []
-    market = json.loads((ROOT / ".claude-plugin" / "marketplace.json").read_text())
+    market = json.loads((ROOT / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8"))
     plugins = market.get("plugins") or []
     if not plugins:
         problems.append("marketplace.json lists no plugins")
@@ -59,7 +79,7 @@ def main():
         if not manifest_path.is_file():
             problems.append(f"{rel}: no .claude-plugin/plugin.json")
             continue
-        manifest = json.loads(manifest_path.read_text())
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         if manifest.get("name") != entry["name"]:
             problems.append(f"{rel}: plugin.json names '{manifest.get('name')}', the marketplace lists '{entry['name']}'")
         if "mcpServers" in manifest or (root / ".mcp.json").exists():
@@ -78,7 +98,7 @@ def main():
                 problems.append(f"{rel}/skills/{d.name}: needs SKILL.md")
                 continue
             try:
-                keys = front_matter(skill.read_text())
+                keys = front_matter(skill.read_text(encoding="utf-8"))
             except ValueError as e:
                 problems.append(f"{rel}/skills/{d.name}/SKILL.md: {e}")
                 continue
@@ -91,7 +111,7 @@ def main():
         if path.name == "LICENSE":
             continue
         try:
-            lines = path.read_text().splitlines()
+            lines = path.read_text(encoding="utf-8").splitlines()
         except UnicodeDecodeError:
             continue
         for n, line in enumerate(lines, start=1):
@@ -101,6 +121,17 @@ def main():
                     continue
                 if pattern.search(line):
                     problems.append(f"{path.relative_to(ROOT)}:{n} has {what}")
+
+    for path in tenant_files():
+        try:
+            lines = path.read_text(encoding="utf-8").splitlines()
+        except UnicodeDecodeError:
+            problems.append(f"{path.relative_to(ROOT)}: not UTF-8 text, so the tenant-term check cannot read it")
+            continue
+        for n, line in enumerate(lines, start=1):
+            for term, pattern in TENANT_TERMS:
+                if pattern.search(line):
+                    problems.append(f"{path.relative_to(ROOT)}:{n} names a tenant ('{term}'); keep the plugin generic")
 
     for p in problems:
         print(p)
