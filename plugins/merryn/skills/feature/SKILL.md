@@ -17,12 +17,14 @@ Vocabulary: **project**, **domains** (each with a charter), **tickets** (a featu
   one instance.
 - `--project <id>` keeps the run inside one project when the instance hosts several (`list_projects` lists
   them): pass it as `project` on `pull_work`, `list_items`, `list_domains`, `list_active` and
-  `list_open_questions`. An instance that does not serve `list_projects` hosts one project.
+  `list_open_questions`. An instance whose `list_projects` is absent or empty hosts one project:
+  pass no `project` there.
 - If MCP is unavailable, use the REST twin (`${CLAUDE_PLUGIN_ROOT}/skills/_instance/README.md`). The token never
   goes on a command line: pipe the header to curl on stdin, written by the shell's built-in `printf` from the
   variable the device's registration reads:
   `printf 'Authorization: Bearer %s\n' "$<VARIABLE>" | curl -sS -H @- "https://<instance-host>/api/v1/items?kind=feature"`
-  (a request body goes in a file, `-d @<file>`, because stdin carries the header). If that fails, stop: never
+  (a JSON body goes in a file, `-d @<file> -H 'Content-Type: application/json'`, because stdin carries the
+  header; a patch adds `-X PATCH -H 'If-Match: <etag>'`). If that fails, stop: never
   put the header on the command line, never use `-v` or `--trace` (they print it).
 - Never echo, print, log or commit a token, and never list the environment or read Claude Code's configuration
   to find one; the variable's name comes from the person or the plugin README's convention.
@@ -48,7 +50,7 @@ Vocabulary: **project**, **domains** (each with a charter), **tickets** (a featu
 - Take the feature you selected: `claim {key, session:"<label>", branch:"wip/<key-lowercased>"}` (not
   `pull_work`, which could hand you a different feature than the one you checked). The checkout is the "in
   progress" step and it is atomic; `lease-held` means another lane got there first: pick the next one.
-  Heartbeat with the same label every 15 minutes (`not-holder`: stop; `no-lease`: `claim` again at once);
+  Heartbeat with the same label every 15 minutes (`not-holder`: stop; `no-lease`: `get_item`, and `claim` again at once unless someone else released it);
   release always.
 - `get_domain` for the feature's domain and for every domain whose seams it needs: **the charters are
   binding** (repositories, branch model, what is forbidden).
@@ -98,7 +100,8 @@ Vocabulary: **project**, **domains** (each with a charter), **tickets** (a featu
 ## Step 4 — NOT READY: file the gaps, do not improvise
 1. Each `missing` seam: one request on the owning domain, `create_item {domain:<owner>, kind:"request",
    title:<the seam>, body:"Needed by <key>. What is needed / why the feature needs it / the verified state"}`,
-   then `update_item {key:<the new request>, etag, fields:{for:<key>, level:"missing"}}` (the MCP schema of
+   then `update_item {key:<the new request>, etag:<from the create_item response or get_item>, fields:{for:<key>,
+   level:"missing"}}` (the MCP schema of
    `create_item` does not list `for` and `level`; `update_item` patches them). That domain's `/groom` folds
    it into its queue.
 2. `unpublished` seams: name them in the release note; publishing is landing work, not a request.

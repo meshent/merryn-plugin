@@ -18,12 +18,14 @@ are the items (task, feature, question, request, note, decision); **checkout** i
   one instance.
 - `--project <id>` keeps the run inside one project when the instance hosts several (`list_projects` lists
   them): pass it as `project` on `pull_work`, `list_items`, `list_domains`, `list_active` and
-  `list_open_questions`. An instance that does not serve `list_projects` hosts one project.
+  `list_open_questions`. An instance whose `list_projects` is absent or empty hosts one project:
+  pass no `project` there.
 - If MCP is unavailable, use the REST twin (`${CLAUDE_PLUGIN_ROOT}/skills/_instance/README.md` maps every tool
   to its route). The token never goes on a command line: pipe the header to curl on stdin, written by the
   shell's built-in `printf` from the variable the device's registration reads:
   `printf 'Authorization: Bearer %s\n' "$<VARIABLE>" | curl -sS -H @- "https://<instance-host>/api/v1/work/active"`
-  (a request body goes in a file, `-d @<file>`, because stdin carries the header). If that fails, stop: never
+  (a JSON body goes in a file, `-d @<file> -H 'Content-Type: application/json'`, because stdin carries the
+  header; a patch adds `-X PATCH -H 'If-Match: <etag>'`). If that fails, stop: never
   put the header on the command line, never use `-v` or `--trace` (they print it).
 - Never echo, print, log or commit a token, and never list the environment or read Claude Code's configuration
   to find one; the variable's name comes from the person or the plugin README's convention.
@@ -48,7 +50,9 @@ The domain is the argument. If none was given, `list_domains`, ask which domain,
 - `--item <key>` (a dispatcher naming one ticket): `claim {key, session, branch}` instead of pulling, then
   `route_item {key}` as below, and work only that ticket. `--session <label>` takes the dispatcher's label; a
   claim under the label that already holds the ticket is a heartbeat.
-- Otherwise derive your tiers from `get_policy {domain}` (`--tier` overrides, for a dispatcher that names them):
+- Otherwise derive your tiers from `get_policy {domain}` (`--tier` overrides, for a dispatcher that names them).
+  Count only rules with no keywords and a kind that is empty or `task` (the policy matches the first rule in
+  priority order; keyword and feature rules are settled per ticket by `route_item` below):
   - a rule that names your model with a tier gives you that tier; one that names your model with no tier gives
     you `impl` and `review`;
   - no rule names your model but `defaultModel` is yours: the tiers among `impl` and `review` that no rule
@@ -56,7 +60,8 @@ The domain is the argument. If none was given, `list_domains`, ask which domain,
   - no rule names your model and `defaultModel` is someone else's: do not pull. Hand off with
     `NEXT: run <domain> @<model>` for the model the policy routes the top tickets to;
   - no policy (null): `impl` and `review`.
-  `design` is never pulled here: it is `/groom`'s. Passing `tiers` skips untiered tickets: if the top tickets
+  `design` is never pulled here: it is `/groom`'s. **An empty set means do not pull** (`pull_work` reads
+  `tiers:[]` as any tier): hand off with `NEXT:` for the model the policy names. Passing `tiers` skips untiered tickets: if the top tickets
   are untiered, they need `/groom` to tier them; say so in the handoff instead of working around it.
 - `pull_work {domain, project?, kinds:["task"], tiers, session:"<label>", branch, ttlMinutes:120}` with a
   session label of your own (e.g. `run-<domain>-<yyyymmdd-hhmm>`), the same label on every later call.
@@ -80,8 +85,9 @@ One ticket at a time, up to `--max N` (default 3) or until context runs heavy or
    or writes data scoped to a caller (a user, an account, a tenant) checks the authenticated caller before
    trusting an id from the route, body or query: write the wrong-caller and anonymous-caller tests too.
 3. `heartbeat {key, session}` every 15 minutes and before any long step. `not-holder` means someone else took
-   the ticket: stop, do not commit, pull again. `no-lease` means your lease lapsed and nobody has taken it yet:
-   `claim {key, session}` at once. If a heartbeat fails twice for another reason, keep working and note it.
+   the ticket: stop, do not commit, pull again. `no-lease` means your lease lapsed or was released: `get_item`,
+   and `claim {key, session}` at once only if it is still `in-progress` or `todo` and its last event is not a
+   release by someone else (an admin's release is a stop). If a heartbeat fails twice for another reason, keep working and note it.
 4. **Review gate before the commit**, per `_review/README.md`: independent reviewers over the diff, the
    acceptance criteria and the charter (one lens for `impl`, three for `review` tier and for anything touching
    credentials, authorization or money); each finding with a reproduction; fix what is confirmed; two-round

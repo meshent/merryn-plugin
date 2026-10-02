@@ -11,7 +11,7 @@ tenant that needs more layers its own plugin on top of this one instead of forki
 | path | what it is |
 |---|---|
 | `skills/merryn/SKILL.md` | `/merryn`, the backlog loop: desk first, plan lanes, dispatch one agent per pulled item, review, land, close out, repeat until the queue is dry |
-| `skills/run/SKILL.md` | `/run <domain>`, the worker loop over one domain: pull the tickets its routing policy gives your model, work them under the charter, release each |
+| `skills/run/SKILL.md` | `/merryn:run <domain>`, the worker loop over one domain: pull the tickets its routing policy gives your model, work them under the charter, release each |
 | `skills/feature/SKILL.md` | `/feature [key]`, cross-cutting features: probe the seams the repositories actually expose, build when they are there, file the gaps when not |
 | `skills/groom/SKILL.md` | `/groom <domain>`, keep a domain's queue true: close what is done, file gaps, fold answers and requests into tickets, work design tickets inline |
 | `skills/answer/SKILL.md` | `/answer`, the desk: present open questions with a recommendation, record the owner's answers with provenance (`--assist`, `--auto`) |

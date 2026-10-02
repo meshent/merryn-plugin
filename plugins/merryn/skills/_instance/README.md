@@ -14,7 +14,7 @@ server name is whatever the device chose, `merryn-<tenant>` by convention). With
 at the same host, piping the header to curl on stdin rather than putting it on the command line:
 `printf 'Authorization: Bearer %s\n' "$<VARIABLE>" | curl -sS -H @- "https://<instance-host>/api/v1/..."`
 (`printf` is a shell built-in, so the token is in no process's arguments; a request body goes in a file,
-`-d @<file>`, because stdin carries the header; process substitution, `-H @<(…)`, fails in Git Bash on
+`-d @<file> -H 'Content-Type: application/json'`, because stdin carries the header; process substitution, `-H @<(…)`, fails in Git Bash on
 Windows). If that fails, stop rather than put the header on the command line; never use `-v` or `--trace`,
 which print it. Never print a token.
 
@@ -23,7 +23,8 @@ board view and docs mirror target. `list_projects` (REST `GET /projects`) lists 
 `pull_work`, `list_items`, `list_domains`, `list_active`, `list_open_questions` and `submit_doc` take a
 `project` argument (REST: a `project` query parameter on `/items`, `/domains`, `/work/active`; a field on the
 pull and doc bodies); a lane serving one project always passes it. An unknown project is an error, never an
-empty list. An instance that does not serve `list_projects` predates projects and hosts one.
+empty list. An instance that does not serve `list_projects`, or lists none, hosts one project: pass no
+`project` there.
 
 ## The tool map
 
@@ -55,7 +56,7 @@ One line each: what it does · scope · REST twin (relative to `/api/v1`).
 |---|---|---|---|
 | `pull_work` | select the next eligible item and claim it in one step; `pulled:false` lists why candidates were skipped | work | `POST /work/pull` |
 | `claim` | take one named item; one live lease per session label (per token without a label) | work | `POST /items/{key}/claim` |
-| `heartbeat` | extend your lease by its original TTL; every 15 minutes; `not-holder` means someone else holds it now: stop; `no-lease` means yours lapsed and nobody took it: `claim` again at once | work | `POST /items/{key}/heartbeat?session=<label>` (the label is a query parameter) |
+| `heartbeat` | extend your lease by its original TTL; every 15 minutes; `not-holder` means someone else holds it now: stop; `no-lease` means yours lapsed or was released: `claim` again at once unless `get_item` shows someone else released it | work | `POST /items/{key}/heartbeat?session=<label>` (the label is a query parameter) |
 | `release` | end the lease: `done` (+commits), `blocked` (+question), `handoff` (+resumeFrom), `abandon` | work | `POST /items/{key}/release` |
 | `list_active` | every live lease: holder, session, branch, since when (filter by repo, domain) | read | `GET /work/active` |
 

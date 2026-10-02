@@ -20,7 +20,8 @@ Vocabulary: **project**, **domains** (each with a charter), **tickets**, **check
   goes on a command line: pipe the header to curl on stdin, written by the shell's built-in `printf` from the
   variable the device's registration reads:
   `printf 'Authorization: Bearer %s\n' "$<VARIABLE>" | curl -sS -H @- "https://<instance-host>/api/v1/domains/<id>"`
-  (a request body goes in a file, `-d @<file>`, because stdin carries the header). If that fails, stop: never
+  (a JSON body goes in a file, `-d @<file> -H 'Content-Type: application/json'`, because stdin carries the
+  header; a patch adds `-X PATCH -H 'If-Match: <etag>'`). If that fails, stop: never
   put the header on the command line, never use `-v` or `--trace` (they print it).
 - Never echo, print, log or commit a token, and never list the environment or read Claude Code's configuration
   to find one; the variable's name comes from the person or the plugin README's convention.
@@ -82,7 +83,7 @@ Read enough of the domain's code (the repositories its charter names) to know wh
 **Design-tier tickets inline.** You may work one when it is genuinely design work within this domain's
 repositories: `pull_work {domain, tiers:["design"], session:"<label>", branch}` (or `claim {key, session}`), a
 new worktree for this session, commit and push the branch after each step (never the default branch),
-`heartbeat` every 15 minutes (`not-holder`: stop; `no-lease`: `claim` again at once), the review gate per `${CLAUDE_PLUGIN_ROOT}/skills/_review/README.md`, then
+`heartbeat` every 15 minutes (`not-holder`: stop; `no-lease`: `get_item`, and `claim` again at once unless someone else released it), the review gate per `${CLAUDE_PLUGIN_ROOT}/skills/_review/README.md`, then
 `release` with its outcome (`handoff` with `resumeFrom` while landing remains; `done` only when nothing does).
 One ticket per session label; release before taking another.
 

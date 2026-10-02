@@ -24,7 +24,8 @@ hold tickets until someone answers them.
   are `GET /items?kind=question&status=todo`). The token never goes on a command line: pipe the header to curl
   on stdin, written by the shell's built-in `printf` from the variable the device's registration reads:
   `printf 'Authorization: Bearer %s\n' "$<VARIABLE>" | curl -sS -H @- "https://<instance-host>/api/v1/items?kind=question&status=todo"`
-  (a request body goes in a file, `-d @<file>`, because stdin carries the header). If that fails, stop: never
+  (a JSON body goes in a file, `-d @<file> -H 'Content-Type: application/json'`, because stdin carries the
+  header; a patch adds `-X PATCH -H 'If-Match: <etag>'`). If that fails, stop: never
   put the header on the command line, never use `-v` or `--trace` (they print it). `--auto` never falls back
   to REST: if MCP is down it stops and says so.
 - Never echo, print, log or commit a token, and never list the environment or read Claude Code's configuration
@@ -70,12 +71,13 @@ answered because it seemed obvious.
 - The call sets the question done, returns the tickets it held to `todo` (`unblocked`) and lists those another
   open question still holds (`stillBlocked`). Carry both to the report.
 - A wrong answer is undone with `reopen_question {key, reason}`, never with a status patch.
-- An answer that makes another open question moot: answer that one too, `mode:"filed"`, with an `answer` that
-  points at the deciding question ("Moot: decided by <key>'s answer"), so the tickets it held are released.
-  Never supersede a question by a status patch: that leaves its tickets blocked.
+- An answer that seems to make another open question moot: ask the owner to confirm, then answer that one too,
+  `mode:"human"`, with an `answer` that points at the deciding question ("Moot: decided by <key>'s answer")
+  and `recordedBy:"<the owner> via /answer (moot after <key>)"`, so the tickets it held are released. Never
+  supersede a question by a status patch: that leaves its tickets blocked.
 - Never edit tickets or position banners: lanes own those; the answered question is the handoff.
 
-Report: **answered** (one line each), **now unblocked** (tickets and the `/run <domain>` that resumes each),
+Report: **answered** (one line each), **now unblocked** (tickets and the `/merryn:run <domain>` that resumes each),
 **still open** (what was skipped, so it stays visible).
 
 ## `--assist` (the distilled desk)
@@ -107,7 +109,7 @@ For a long or jargon-heavy desk the owner would rather answer as a handful of pr
 7. **Report and persist**: `submit_doc` the report to `outputs/desk/reports/<the brief's stem>.md`, and
    re-submit the brief at its own path marked `APPROVED <date>` with each changed row marked. One plain-language
    entry per question (the decision as a headline, the situation, the decision, what it costs, why it is
-   right), no keys as the subject; then the deviations, the `unblocked` union with the `/run <domain>` for
+   right), no keys as the subject; then the deviations, the `unblocked` union with the `/merryn:run <domain>` for
    each, what was skipped, and a closing list of the decisions made this run that change what people pay,
    receive or can do, one line each.
 
