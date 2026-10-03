@@ -1,6 +1,6 @@
 # The instance — every tool a Merryn instance serves, and its REST twin
 
-A Merryn instance serves one tenant. It exposes the same services twice: an MCP server at `POST /mcp`
+A Merryn instance serves one tenant (an organization), which may hold several projects. It exposes the same services twice: an MCP server at `POST /mcp`
 (JSON-RPC 2.0 over streamable HTTP, plain JSON responses) and a REST API under `/api/v1`. Both take the same
 bearer token (`Authorization: Bearer mk_…`), the same scopes and the same rate limit, so a skill may use either
 and get the same behaviour. `GET /api/openapi.json` is the REST schema.
@@ -11,9 +11,20 @@ without the scope answers `forbidden`.
 
 **Binding.** Each device registers the instance as a user-scope MCP server (the plugin README shows how; the
 server name is whatever the device chose, `merryn-<tenant>` by convention). Without MCP, call the REST route below
-at the same host, passing the header through a file curl reads rather than on the command line:
-`curl -sS -H @<(printf 'Authorization: Bearer %s\n' "$<VARIABLE>") https://<instance-host>/api/v1/...`.
-Never print a token.
+at the same host, piping the header to curl on stdin rather than putting it on the command line:
+`printf 'Authorization: Bearer %s\n' "$<VARIABLE>" | curl -sS -H @- "https://<instance-host>/api/v1/..."`
+(`printf` is a shell built-in, so the token is in no process's arguments; a request body goes in a file,
+`-d @<file> -H 'Content-Type: application/json'`, because stdin carries the header; process substitution, `-H @<(…)`, fails in Git Bash on
+Windows). If that fails, stop rather than put the header on the command line; never use `-v` or `--trace`,
+which print it. Never print a token.
+
+**Projects.** An instance may host several projects (an organization's products), each owning its domains,
+board view and docs mirror target. `list_projects` (REST `GET /projects`) lists them, the home project first.
+`pull_work`, `list_items`, `list_domains`, `list_active`, `list_open_questions` and `submit_doc` take a
+`project` argument (REST: a `project` query parameter on `/items`, `/domains`, `/work/active`; a field on the
+pull and doc bodies); a lane serving one project always passes it. An unknown project is an error, never an
+empty list. An instance that does not serve `list_projects`, or lists none, hosts one project: pass no
+`project` there.
 
 ## The tool map
 
@@ -27,15 +38,16 @@ One line each: what it does · scope · REST twin (relative to `/api/v1`).
 ### Domains (the project's charters)
 | tool | purpose | scope | REST |
 |---|---|---|---|
-| `list_domains` | every domain with its position banner and repo policy | read | `GET /domains` |
+| `list_projects` | the projects on this instance, home first, with each one's domain ids | read | `GET /projects` |
+| `list_domains` | every domain with its project, position banner and repo policy (`project` narrows it) | read | `GET /domains` |
 | `get_domain` | one domain: the binding charter, position banner, repo policy, counts, recent journal, ETag | read | `GET /domains/{id}` |
 | `update_domain` | patch a domain with its ETag; lanes may change position, flags, lastActivity; every other field (title, repo, repos, charter, charterSummary, repoPolicy, queues) needs admin | work (admin for other fields) | `PATCH /domains/{id}` with `If-Match` |
 
 ### Items (tickets, features, questions, requests, notes, decisions)
 | tool | purpose | scope | REST |
 |---|---|---|---|
-| `list_items` | filtered list (domain, kind, status, tier, repo, q, limit, default 100); bodies omitted | read | `GET /items?…` (adds owner and leased filters, returns full items, default limit 1000) |
-| `get_item` | one item: body, acceptance criteria, links, ETag, recent events | read | `GET /items/{key}` (events: `GET /items/{key}/events`) |
+| `list_items` | filtered list (domain, kind, status, tier, repo, q, limit, default 100); each entry is key, domain, kind, status, tier, priority, repo, title and the live lease holder; body, acceptance criteria, `blockedReason`, `blocks`, `dependsOn` and links are omitted (`get_item` each, or use the REST twin) | read | `GET /items?…` (adds owner and leased filters, returns full items, default limit 1000) |
+| `get_item` | one item: body, acceptance criteria, links, ETag and its last 20 events (`get_history` has them all) | read | `GET /items/{key}` (events: `GET /items/{key}/events`) |
 | `create_item` | create a task, feature, question, request, note or decision | work | `POST /items` |
 | `update_item` | patch fields with the item's ETag (412 when stale); status never becomes in-progress this way | work | `PATCH /items/{key}` with `If-Match` |
 
@@ -44,7 +56,7 @@ One line each: what it does · scope · REST twin (relative to `/api/v1`).
 |---|---|---|---|
 | `pull_work` | select the next eligible item and claim it in one step; `pulled:false` lists why candidates were skipped | work | `POST /work/pull` |
 | `claim` | take one named item; one live lease per session label (per token without a label) | work | `POST /items/{key}/claim` |
-| `heartbeat` | extend your lease by its original TTL; every 15 minutes; `not-holder` means stop | work | `POST /items/{key}/heartbeat?session=<label>` (the label is a query parameter) |
+| `heartbeat` | extend your lease by its original TTL; every 15 minutes; `not-holder` means someone else holds it now: stop; `no-lease` means yours lapsed or was released: `claim` again at once unless `get_item` shows someone else released it | work | `POST /items/{key}/heartbeat?session=<label>` (the label is a query parameter) |
 | `release` | end the lease: `done` (+commits), `blocked` (+question), `handoff` (+resumeFrom), `abandon` | work | `POST /items/{key}/release` |
 | `list_active` | every live lease: holder, session, branch, since when (filter by repo, domain) | read | `GET /work/active` |
 
@@ -58,6 +70,12 @@ One line each: what it does · scope · REST twin (relative to `/api/v1`).
 | `get_escalation_policy` | the categories that always go to a person (tenant default overlaid by the domain's) | read | `GET /escalation-policy`, `GET /domains/{id}/escalation-policy` |
 | `get_decision` | one decision or answered question, its citations and its supersededBy chain | read | `GET /decisions/{key}` |
 | `list_decisions` | decisions and answered questions (domain, category, since, q) | read | `GET /decisions` |
+
+`create_item` binds more fields than its advertised MCP schema lists: `question` (a question's text), `for`
+and `level` (a request's consumer and the seam's level) and `blockedReason` are accepted on create, by MCP and
+by `POST /items` alike. Pass every field the item needs in the one `create_item` call. Only if the client
+refuses a field outside the advertised schema, create without it and set it with one `update_item` (which
+accepts the same fields).
 
 ### Knowledge
 | tool | purpose | scope | REST |

@@ -4,9 +4,10 @@ The `meshent` marketplace for [Claude Code](https://claude.com/claude-code) plug
 Merryn instances. Merryn is a work-coordination platform: one queue per tenant,
 leases so no two agents take the same item, a desk for questions, and a mirror that writes state to git.
 
-It holds one plugin today, `merryn`, whose `/merryn` skill runs the backlog loop against any Merryn instance:
+It holds one plugin today, `merryn`. Its `/merryn` skill runs the backlog loop against any Merryn instance:
 answer what the desk can, plan lanes, dispatch one agent per pulled item, review, land, close out, and repeat
-until the queue is dry.
+until the queue is dry. Its worker skills do one part of that loop each: `/merryn:run` works one domain's tickets,
+`/merryn:feature` builds cross-cutting features, `/merryn:groom` keeps a domain's queue true, and `/merryn:answer` is the desk.
 
 ## Install
 
@@ -22,6 +23,28 @@ plugin ships no MCP server and no instance binding, so this step is per device a
 
 To pick up changes later, run `claude plugin update merryn@meshent`.
 
+## Which command for which project
+
+Each device registers **one MCP server per Merryn instance**: a server name, the instance's URL, and the
+environment variable that holds that device's token. The server name picks the instance; an instance may host
+several projects, and `--project <id>` picks one of them. Pass both to every command:
+
+```
+/merryn          --server <name> --project <id>            the whole loop, landing included
+/merryn:run      <domain> --server <name> --project <id>   one domain's tickets
+/merryn:feature  [key] --server <name> --project <id>      cross-cutting features
+/merryn:groom    <domain> --server <name> --project <id>   keep a domain's queue true
+/merryn:answer   --server <name> --project <id>            the desk
+```
+
+The worker skills go by their qualified names, `/merryn:<skill>`. The qualified form avoids collisions: Claude
+Code has a built-in `/run`, and another installed plugin may ship its own `feature`, `groom` or `answer`, so a
+bare name may reach a different skill (and a different instance). Without `--server` the commands use
+`merryn-mira`, Mira's own instance; without `--project` they work every project on the instance. A project
+with needs beyond the generic loop ships its own layer plugin that wraps these skills with its server name,
+project and specifics; for that project, run the layer's commands. Registration and options:
+[plugins/merryn/README.md](plugins/merryn/README.md#which-command-for-which-project).
+
 ## Layout
 
 ```
@@ -29,10 +52,14 @@ To pick up changes later, run `claude plugin update merryn@meshent`.
 plugins/merryn/
   .claude-plugin/plugin.json        the "merryn" plugin
   skills/merryn/SKILL.md            /merryn, the backlog loop
+  skills/run/SKILL.md               /merryn:run, the worker loop over one domain
+  skills/feature/SKILL.md           /merryn:feature, cross-cutting features
+  skills/groom/SKILL.md             /merryn:groom, keep a domain's queue true
+  skills/answer/SKILL.md            /merryn:answer, the desk
   skills/_instance/README.md        every tool an instance serves, with its REST twin
   skills/_review/README.md          the review gate
   skills/_docs/README.md            the decision-doc contract
-scripts/check.py                    the checks CI runs
+scripts/check.py                    the checks CI runs (manifests, skills, secrets, tenant names)
 ```
 
 A directory under `skills/` that starts with `_` is a shared contract the skills read, not a skill of its own.
@@ -41,7 +68,8 @@ A directory under `skills/` that starts with `_` is a shared contract the skills
 
 Everything here is generic: it names no tenant's products, repositories or people, and carries no instance
 host, token or account id. Tenant specifics come from the instance at run time (charters, policy, items). A
-tenant that needs more should layer its own plugin on top of this one rather than fork it.
+tenant that needs more should layer its own plugin on top of this one rather than fork it. `scripts/check.py`
+enforces part of this: it fails when any file or path names a tenant it knows the plugin was modelled on.
 
 To try a working copy, run `claude --plugin-dir ./plugins/merryn`. It overrides an installed plugin of the same
 name, so drop the flag when you're done.

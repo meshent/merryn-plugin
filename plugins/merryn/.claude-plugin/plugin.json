@@ -1,7 +1,7 @@
 {
   "name": "merryn",
-  "version": "0.1.0",
-  "description": "Merryn's generic Claude Code skills for any tenant instance: /merryn (the backlog loop) and the shared instance, review and docs contracts",
+  "version": "0.2.0",
+  "description": "Merryn's generic Claude Code skills for any tenant instance: /merryn (the backlog loop), /merryn:run (one domain's tickets), /merryn:feature (cross-cutting features), /merryn:groom (keep a domain's queue true), /merryn:answer (the desk), and the shared instance, review and docs contracts",
   "author": {
     "name": "meshent"
   },
