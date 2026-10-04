@@ -18,6 +18,7 @@ tenant that needs more layers its own plugin on top of this one instead of forki
 | `skills/_instance/README.md` | every tool an instance serves over MCP, its scope and its REST twin under `/api/v1` |
 | `skills/_review/README.md` | the review gate: three lenses, reproductions, 0 skipped, the two-round cap, the independent `MERGE` / `DO NOT MERGE` review |
 | `skills/_docs/README.md` | the decision doc: path, front matter, `## Intent` and `## Usage`, delivery through `submit_doc` |
+| `hooks/hooks.json`, `hooks/check-in.js` | the SessionStart hook: the session checks in with each registered instance and gets its guidance (below) |
 
 The plugin ships **no MCP server**, so that each device holds its own token at user scope and the plugin
 carries no binding to any instance. (For the record: in a plugin's `.mcp.json` `headers`, only a fixed list of
@@ -102,6 +103,43 @@ run the layer's commands for that project.
 
 For local development only, `claude --plugin-dir /path/to/merryn-plugin/plugins/merryn` loads the working copy;
 it silently overrides an installed plugin of the same name, so drop it when you are done.
+
+## The session check-in hook
+
+Every Claude Code session that has this plugin enabled checks in with the Merryn instances this device is
+registered with, at session start and again on resume, `/clear`, compaction and fork. The hook
+(`hooks/check-in.js`, run with `node`, which the fleet has) reads the hook input Claude Code hands it
+(`session_id`, `model`, `cwd`), finds the registrations in `~/.claude.json` whose URL ends in `/mcp` and whose
+header is `Authorization: Bearer ${VARIABLE}` and that look like Merryn's (a name starting `merryn`, a host
+containing `merryn`, or a `MERRYN_*` variable), takes each token from the named variable in its own process, and
+POSTs `/api/v1/sessions/check-in` with:
+
+```json
+{ "sessionId": "<session_id>", "harness": "claude-code", "model": "<model>", "device": { "name": "<hostname>", "os": "Windows 11 | macOS 24.6 | Linux …" },
+  "cwd": "<cwd>", "canDispatch": ["fable", "opus", "sonnet", "haiku"], "source": "hook" }
+```
+
+The instance records the session (`GET /sessions`, the board's *Who's working*: device, harness, model, project,
+since, last seen, trust `hook`) and answers `guidance`: who you are to it, the project, its routing (tiers →
+models), which models online sessions can run, and that the loop's own check-in step can be skipped. The hook
+prints that as `additionalContext`, so it is in the session's context from the first turn; the served `loop`
+prompt sees the line beginning *Checked in with Merryn* and does not check in again.
+
+What the hook never does: it finishes within the 3-second budget or exits quietly; on any failure (no
+registration, the variable not set, the instance unreachable, an older instance without the route, a refused
+token) it prints nothing and exits 0, so a session always starts; it writes the token nowhere, not stdout, not
+stderr, not a file (the test in `scripts/test-hook.js` checks this against a fake instance). It is the one
+place in the plugin that reads a token's value, and it does so the way Claude Code itself does when it connects:
+from the variable the registration names. The skills still never read the environment or the configuration.
+
+Knobs, all optional: `MERRYN_CHECKIN=off` disables the hook; `MERRYN_CHECKIN_SERVERS=merryn-acme,merryn-mira`
+names the registrations to check in with (default: every Merryn-looking one whose variable is set, so a device
+registered with two instances checks in with both); `MERRYN_CAN_DISPATCH=opus,haiku` overrides the models this
+harness reports it can hand work to. On Windows the hook runs under whichever shell Claude Code uses (Git Bash,
+or PowerShell without it); it is exec-form (`node <script>`), so neither matters.
+
+Harnesses without hooks (claude.ai, ChatGPT, Codex, Cursor) are covered by the instance itself: the served
+`loop` prompt's first step calls `check_in` with `source: "self"`.
 
 ## Another tenant
 

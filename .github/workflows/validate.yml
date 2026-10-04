@@ -22,3 +22,5 @@ jobs:
           for p in plugins/*/; do npx -y @anthropic-ai/claude-code plugin validate "$p"; done
       - name: Check skills, MCP binding and secrets
         run: python3 scripts/check.py
+      - name: Test the session check-in hook against a fake instance
+        run: node scripts/test-hook.js
