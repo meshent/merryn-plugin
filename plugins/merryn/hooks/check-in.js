@@ -51,7 +51,10 @@ function registrations(cwd) {
     if (!e || typeof e.url !== 'string') continue;
     let url;
     try { url = new URL(e.url); } catch (_) { continue; }
-    if (!/\/mcp\/?$/.test(url.pathname) || (url.protocol !== 'https:' && url.protocol !== 'http:')) continue;
+    if (!/\/mcp\/?$/.test(url.pathname)) continue;
+    // A token travels only over TLS; plain http is accepted for this machine's own development hosts.
+    const loopback = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname) || url.hostname.endsWith('.localhost');
+    if (url.protocol !== 'https:' && !(url.protocol === 'http:' && loopback)) continue;
     const header = (e.headers && (e.headers.Authorization || e.headers.authorization)) || '';
     const m = /^Bearer\s+\$\{([A-Za-z_][A-Za-z0-9_]*)\}\s*$/.exec(header);
     if (!m) continue;
