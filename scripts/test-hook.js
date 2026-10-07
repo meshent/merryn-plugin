@@ -100,18 +100,18 @@ function server(handler) {
     const h = home({ 'merryn-test': { type: 'http', url: 'http://127.0.0.1:9/mcp', headers: { Authorization: 'Bearer ${MERRYN_TEST_TOKEN}' } } });
     const r = await run(h, { MERRYN_TEST_TOKEN: TOKEN }, input);
     assert.strictEqual(r.code, 0); assert.strictEqual(r.out, ''); assert.strictEqual(r.err, '');
-    assert.ok(r.ms < 3000, `finished in ${r.ms} ms`);
+    assert.ok(r.ms < 10000, `finished in ${r.ms} ms`);
     console.log('ok 4 silent when nothing answers');
   }
 
-  // 5. A server that never responds: the deadline ends the hook quietly, under 3 seconds.
+  // 5. A server that never responds: the deadline ends the hook quietly, inside the 10-second hook budget.
   {
     const { s, port } = await server(() => { /* never answer */ });
     const h = home({ 'merryn-test': { type: 'http', url: `http://127.0.0.1:${port}/mcp`, headers: { Authorization: 'Bearer ${MERRYN_TEST_TOKEN}' } } });
     const r = await run(h, { MERRYN_TEST_TOKEN: TOKEN }, input);
     s.closeAllConnections ? s.closeAllConnections() : null; s.close();
     assert.strictEqual(r.code, 0); assert.strictEqual(r.out, '');
-    assert.ok(r.ms < 3000, `finished in ${r.ms} ms`);
+    assert.ok(r.ms < 10000, `finished in ${r.ms} ms`);
     console.log('ok 5 silent on a hang');
   }
 

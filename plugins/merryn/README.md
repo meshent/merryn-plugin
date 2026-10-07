@@ -125,7 +125,7 @@ models), which models online sessions can run, and that the loop's own check-in 
 prints that as `additionalContext`, so it is in the session's context from the first turn; the served `loop`
 prompt sees the line beginning *Checked in with Merryn* and does not check in again.
 
-What the hook never does: it finishes within the 3-second budget or exits quietly; on any failure (no
+What the hook never does: it finishes within the 10-second budget (an 8-second deadline of its own; Node alone can take a second to start on Windows) or exits quietly; on any failure (no
 registration, the variable not set, the instance unreachable, an older instance without the route, a refused
 token) it prints nothing and exits 0, so a session always starts; it writes the token nowhere, not stdout, not
 stderr, not a file (the test in `scripts/test-hook.js` checks this against a fake instance). It is the one
