@@ -59,8 +59,22 @@ plugins/merryn/
   skills/_instance/README.md        every tool an instance serves, with its REST twin
   skills/_review/README.md          the review gate
   skills/_docs/README.md            the decision-doc contract
+  hooks/hooks.json                  the SessionStart hook
+  hooks/check-in.js                 what it runs: the session check-in (node)
 scripts/check.py                    the checks CI runs (manifests, skills, secrets, tenant names)
+scripts/test-hook.js                the hook's tests against a fake instance on localhost
 ```
+
+## The session check-in
+
+The plugin ships one hook. At session start (and on resume, clear, compact and fork) it tells each Merryn
+instance this device is registered with what the session is: harness, model, device, working directory and the
+models it can hand work to. The instance answers with guidance (the project, how its routing maps tiers to
+models, which models are online now), which lands in the session's context, so the loop starts knowing how to
+drive. The board's Dashboard shows the session under *Who's working*. It uses the token the device already
+holds for that instance, the one its MCP registration names; it finishes within three seconds, says nothing when
+an instance cannot be reached, never blocks the session and never prints a token. `MERRYN_CHECKIN=off` disables
+it. Details: [plugins/merryn/README.md](plugins/merryn/README.md#the-session-check-in-hook).
 
 A directory under `skills/` that starts with `_` is a shared contract the skills read, not a skill of its own.
 

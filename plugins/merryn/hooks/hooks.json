@@ -1,0 +1,18 @@
+{
+  "description": "Session check-in: at session start (and on resume, clear, compact, fork) tell the Merryn instances this device is registered with what this session is, and bring their guidance into the session. Silent when an instance is unreachable; never blocks the session; never prints a token.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/check-in.js"],
+            "timeout": 3,
+            "statusMessage": "Checking in with Merryn…"
+          }
+        ]
+      }
+    ]
+  }
+}
