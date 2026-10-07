@@ -2,7 +2,8 @@
 'use strict';
 // Merryn session check-in: a Claude Code SessionStart hook.
 //
-// Reads the hook input on stdin (session_id, model, source, cwd), finds the Merryn instances this device registered as
+// Reads the hook input on stdin (session_id, model, source, cwd; on resume, where there is no model, the transcript's
+// last assistant turn names it), finds the Merryn instances this device registered as
 // MCP servers (an entry of ~/.claude.json whose URL ends in /mcp and whose Authorization header is "Bearer ${VARIABLE}"),
 // takes each token from the environment variable the registration names (the same one Claude Code reads when it
 // connects), POSTs /api/v1/sessions/check-in with this session's harness, model, device and the models it can hand work
@@ -67,6 +68,39 @@ function registrations(cwd) {
   return out;
 }
 
+/**
+ * The session's model when the hook input does not carry one (Claude Code sends it on a fresh start, not on resume):
+ * the model of the transcript's last assistant turn, then ANTHROPIC_MODEL, then the model chosen in settings.
+ */
+function sessionModel(hook) {
+  if (typeof hook.model === 'string' && hook.model) return hook.model;
+  const file = typeof hook.transcript_path === 'string' ? hook.transcript_path : '';
+  if (file) {
+    try {
+      const size = fs.statSync(file).size;
+      const length = Math.min(size, 2 * 1024 * 1024);
+      const fd = fs.openSync(file, 'r');
+      const buffer = Buffer.alloc(length);
+      fs.readSync(fd, buffer, 0, length, size - length);
+      fs.closeSync(fd);
+      const lines = buffer.toString('utf8').split('\n');
+      for (let i = lines.length - 1; i >= 0; i--) {
+        if (!lines[i].includes('"assistant"')) continue;
+        let entry;
+        try { entry = JSON.parse(lines[i]); } catch (_) { continue; }
+        const model = entry && entry.type === 'assistant' && entry.message && entry.message.model;
+        if (typeof model === 'string' && /^claude-/.test(model)) return model;
+      }
+    } catch (_) { /* no transcript yet */ }
+  }
+  if (process.env.ANTHROPIC_MODEL) return process.env.ANTHROPIC_MODEL;
+  try {
+    const settings = JSON.parse(fs.readFileSync(path.join(os.homedir(), '.claude', 'settings.json'), 'utf8'));
+    if (settings && typeof settings.model === 'string' && settings.model) return settings.model;
+  } catch (_) { /* no settings */ }
+  return undefined;
+}
+
 function checkIn(reg, body) {
   return new Promise((resolve) => {
     const token = process.env[reg.variable];
@@ -104,14 +138,22 @@ async function main(input) {
   let hook = {};
   try { hook = JSON.parse(input || '{}') || {}; } catch (_) { hook = {}; }
   const cwd = typeof hook.cwd === 'string' && hook.cwd ? hook.cwd : process.cwd();
-  const regs = registrations(cwd);
+  // Two registrations that send the same token to the same instance are one principal: check in once. (Compared in
+  // memory only; the token is still never written anywhere.)
+  const seen = new Set();
+  const regs = registrations(cwd).filter((r) => {
+    const key = `${r.url.origin}\n${process.env[r.variable] || r.variable}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
   if (!regs.length) return quit();
   const dispatch = (process.env.MERRYN_CAN_DISPATCH || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
   const body = {
     sessionId: typeof hook.session_id === 'string' ? hook.session_id : undefined,
     harness: 'claude-code',
     harnessVersion: process.env.CLAUDE_CODE_VERSION || undefined,
-    model: typeof hook.model === 'string' && hook.model ? hook.model : undefined,
+    model: sessionModel(hook),
     device: { name: os.hostname(), os: osName() },
     cwd,
     canDispatch: dispatch.length ? dispatch : DEFAULT_DISPATCH,
