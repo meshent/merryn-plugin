@@ -144,5 +144,44 @@ function server(handler) {
     console.log('ok 7 server selection and dispatch override');
   }
 
+  // 8. On resume there is no model in the input: the transcript's last assistant turn names it (not a subagent's
+  // "fable" or a "<synthetic>" turn); with no transcript either, the model is left out.
+  {
+    const { s, port, seen } = await server((req, res) => res.end('{"guidance":"G"}'));
+    const h = home({ 'merryn-test': { type: 'http', url: `http://127.0.0.1:${port}/mcp`, headers: { Authorization: 'Bearer ${MERRYN_TEST_TOKEN}' } } });
+    const transcript = path.join(h, 'session.jsonl');
+    fs.writeFileSync(transcript, [
+      { type: 'assistant', message: { model: 'claude-sonnet-5-5', content: [] } },
+      { type: 'assistant', message: { model: 'claude-opus-5-5', content: [{ type: 'tool_use', input: { model: 'fable' } }] } },
+      { type: 'user', message: { content: 'next' } },
+      { type: 'assistant', message: { model: '<synthetic>', content: [] } },
+      { type: 'system', content: 'compacted' },
+    ].map((e) => JSON.stringify(e)).join('\n') + '\n');
+    const resume = { session_id: 'sess-456', source: 'resume', cwd: process.cwd(), hook_event_name: 'SessionStart', transcript_path: transcript };
+    await run(h, { MERRYN_TEST_TOKEN: TOKEN }, resume);
+    assert.strictEqual(seen[seen.length - 1].body.model, 'claude-opus-5-5', 'the last real assistant model');
+    await run(h, { MERRYN_TEST_TOKEN: TOKEN }, { ...resume, transcript_path: path.join(h, 'missing.jsonl') });
+    assert.strictEqual(seen[seen.length - 1].body.model, undefined, 'no model when nothing names one');
+    await run(h, { MERRYN_TEST_TOKEN: TOKEN, ANTHROPIC_MODEL: 'claude-haiku-4-5' }, { ...resume, transcript_path: undefined });
+    assert.strictEqual(seen[seen.length - 1].body.model, 'claude-haiku-4-5', 'ANTHROPIC_MODEL when there is no transcript');
+    s.close();
+    console.log('ok 8 model from the transcript on resume');
+  }
+
+  // 9. Two registrations sending the same token to the same instance check in once; different tokens check in twice.
+  {
+    const { s, port, seen } = await server((req, res) => res.end('{"guidance":"G"}'));
+    const url = `http://127.0.0.1:${port}/mcp`;
+    const h = home({ 'merryn-a': { type: 'http', url, headers: { Authorization: 'Bearer ${MERRYN_A_TOKEN}' } }, 'merryn-b': { type: 'http', url, headers: { Authorization: 'Bearer ${MERRYN_B_TOKEN}' } } });
+    let r = await run(h, { MERRYN_A_TOKEN: TOKEN, MERRYN_B_TOKEN: TOKEN }, input);
+    assert.strictEqual(seen.length, 1, 'one check-in for one principal');
+    assert.strictEqual(JSON.parse(r.out).hookSpecificOutput.additionalContext, 'G', 'guidance once');
+    r = await run(h, { MERRYN_A_TOKEN: TOKEN, MERRYN_B_TOKEN: TOKEN + '_other' }, input);
+    assert.strictEqual(seen.length, 3, 'two principals, two check-ins');
+    assert.ok(!r.out.includes(TOKEN) && !r.err.includes(TOKEN), 'the token is never printed');
+    s.close();
+    console.log('ok 9 one check-in per instance and token');
+  }
+
   console.log('all hook tests passed');
 })().catch((e) => { console.error(e); process.exit(1); });
