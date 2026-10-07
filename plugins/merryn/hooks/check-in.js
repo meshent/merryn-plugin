@@ -9,7 +9,7 @@
 // to, and prints the instance's guidance as additionalContext so the session starts knowing its project, its routing
 // and who else is online.
 //
-// Rules: finish within the hook's 3-second budget, say nothing on any failure, always exit 0, never write a token
+// Rules: finish within the hook's 10-second budget (node alone can take a second to start on Windows), say nothing on any failure, always exit 0, never write a token
 // anywhere (not stdout, not stderr, not a file). Set MERRYN_CHECKIN=off to disable; MERRYN_CHECKIN_SERVERS to name the
 // server(s) to check in with (comma-separated; default: every registration whose name, host or variable says merryn);
 // MERRYN_CAN_DISPATCH to override the models this harness can dispatch to (default: fable, opus, sonnet, haiku, the
@@ -21,8 +21,8 @@ const path = require('path');
 const http = require('http');
 const https = require('https');
 
-const DEADLINE_MS = 2800;
-const REQUEST_MS = 2500;
+const DEADLINE_MS = 8000;
+const REQUEST_MS = 6000;
 const DEFAULT_DISPATCH = ['fable', 'opus', 'sonnet', 'haiku'];
 
 const deadline = setTimeout(() => process.exit(0), DEADLINE_MS);

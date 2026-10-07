@@ -8,7 +8,7 @@
             "type": "command",
             "command": "node",
             "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/check-in.js"],
-            "timeout": 3,
+            "timeout": 10,
             "statusMessage": "Checking in with Merryn…"
           }
         ]
