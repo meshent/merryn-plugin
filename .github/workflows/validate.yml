@@ -4,12 +4,21 @@ on:
   push:
     branches: [main]
   pull_request:
+    # C26/C32 (Actions budget): a PR runs this only when it carries the `ci:validate` label.
+    types: [opened, synchronize, reopened, labeled, ready_for_review]
+
+# C26/C32: a newer push to the same branch or PR cancels the superseded run. An unrelated label event gets
+# its own group so it cannot cancel a real run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}${{ github.event.action == 'labeled' && github.event.label.name != 'ci:validate' && format('-{0}', github.run_id) || '' }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
   validate:
+    if: ${{ github.event_name != 'pull_request' || (contains(github.event.pull_request.labels.*.name, 'ci:validate') && (github.event.action != 'labeled' || github.event.label.name == 'ci:validate')) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
