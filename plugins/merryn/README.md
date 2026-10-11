@@ -11,6 +11,7 @@ tenant that needs more layers its own plugin on top of this one instead of forki
 | path | what it is |
 |---|---|
 | `skills/merryn/SKILL.md` | `/merryn`, the backlog loop: desk first, plan lanes, dispatch one agent per pulled item, review, land, close out, repeat until the queue is dry |
+| `skills/loop/SKILL.md` | `/merryn:loop [project]`, the loop's qualified name; it hands off to `/merryn`'s loop and holds no logic of its own |
 | `skills/run/SKILL.md` | `/merryn:run <domain>`, the worker loop over one domain: pull the tickets its routing policy gives your model, work them under the charter, release each |
 | `skills/feature/SKILL.md` | `/merryn:feature [key]`, cross-cutting features: probe the seams the repositories actually expose, build when they are there, file the gaps when not |
 | `skills/groom/SKILL.md` | `/merryn:groom <domain>`, keep a domain's queue true: close what is done, file gaps, fold answers and requests into tickets, work design tickets inline |
@@ -63,13 +64,14 @@ claude plugin install merryn@meshent --scope user
 claude plugin update merryn@meshent                  # later, to pick up changes
 ```
 
-Invoke it inside Claude Code as `/merryn [project] [verb] [flags]` (fully qualified: `/merryn:merryn`). Bare
-`/merryn` runs the backlog loop; the loop takes `--domain <id>`, `--items <key>…`, `--rounds N`, `--dry-run` and
+Invoke it inside Claude Code as `/merryn [project] [verb] [flags]` (fully qualified: `/merryn:merryn`); the verb
+may also come first, before the project (`/merryn loop mira`). Bare `/merryn`, `/merryn mira loop` and
+`/merryn:loop mira` all run the backlog loop; the loop takes `--domain <id>`, `--items <key>…`, `--rounds N`, `--dry-run` and
 `--no-merge`. Run `--dry-run` first against a new instance: it prints the lane table and dispatches nothing.
 
 | verb | runs | options |
 |---|---|---|
-| *(none)*, `loop` | the backlog loop | as above |
+| *(none)*, `loop` | the backlog loop (qualified: `/merryn:loop`) | as above |
 | `answer` | `/merryn:answer`, the desk; needs the `answer` scope (admin implies it) and stops before reading anything without one | `--domain <id>`, `--assist` (distil a long desk into principles), `--auto` (unattended) |
 | `status` | where the project stands; read only | none |
 | `pause` / `stop` | release this session's leases (after finishing what is in flight / now) | none |
