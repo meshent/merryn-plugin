@@ -25,25 +25,23 @@ To pick up changes later, run `claude plugin update merryn@meshent`.
 
 ## Which command for which project
 
-Each device registers **one MCP server per Merryn instance**: a server name, the instance's URL, and the
-environment variable that holds that device's token. The server name picks the instance; an instance may host
-several projects, and `--project <id>` picks one of them. Pass both to every command:
+One command, `/merryn [project] [verb]`:
 
 ```
-/merryn          --server <name> --project <id>            the whole loop, landing included
-/merryn:run      <domain> --server <name> --project <id>   one domain's tickets
-/merryn:feature  [key] --server <name> --project <id>      cross-cutting features
-/merryn:groom    <domain> --server <name> --project <id>   keep a domain's queue true
-/merryn:answer   --server <name> --project <id>            the desk
+/merryn                          the backlog loop, landing included
+/merryn mira                     the same, for the mira project
+/merryn mira answer              the desk (needs the answer scope)
+/merryn mira answer --assist     the desk distilled into a few principle-level questions
+/merryn mira status              where the project stands; read only
+/merryn mira run <domain>        one domain's tickets (also: groom <domain>, feature [key], pause, stop)
 ```
 
-The worker skills go by their qualified names, `/merryn:<skill>`. The qualified form avoids collisions: Claude
-Code has a built-in `/run`, and another installed plugin may ship its own `feature`, `groom` or `answer`, so a
-bare name may reach a different skill (and a different instance). Without `--server` the commands use
-`merryn-mira`, Mira's own instance; without `--project` they work every project on the instance. A project
-with needs beyond the generic loop ships its own layer plugin that wraps these skills with its server name,
-project and specifics; for that project, run the layer's commands. Registration and options:
-[plugins/merryn/README.md](plugins/merryn/README.md#which-command-for-which-project).
+The project picks the Merryn connector. When you leave it out, the skill uses the only Merryn connector
+attached, or the one whose project matches the session's repository or Claude project name. If none of
+those settles it, it asks; it never falls back to a default. The long forms (`/merryn:answer --server <name>
+--project <id> --assist` and the like) still work. A project with needs beyond the generic loop ships its own
+layer plugin that wraps these skills with its specifics; for that project, run the layer's commands.
+Registration and options: [plugins/merryn/README.md](plugins/merryn/README.md#which-command-for-which-project).
 
 ## Layout
 

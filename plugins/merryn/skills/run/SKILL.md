@@ -13,9 +13,10 @@ are the items (task, feature, question, request, note, decision); **checkout** i
 `pull_work` or `claim`; the **desk** is where open questions wait for the owner.
 
 ## Step 0 — bind to the instance
-- `--server <name>` names the MCP server for the instance (default `merryn-mira`): whatever this device
-  registered at user scope (see the plugin README). Its tools are `mcp__<name>__*`. One run talks to exactly
-  one instance.
+- **The connector.** `[project]` (the first word, when it names a connected project) or `--server <name>` picks the
+  Merryn connector; resolve it as `${CLAUDE_PLUGIN_ROOT}/skills/_instance/README.md` › *Choosing the connector*
+  says, before any other call, and never fall back to a default name. Its tools are `mcp__<name>__*`. One run
+  talks to exactly one connector.
 - `--project <id>` keeps the run inside one project when the instance hosts several (`list_projects` lists
   them): pass it as `project` on `pull_work`, `list_items`, `list_domains`, `list_active` and
   `list_open_questions`. An instance whose `list_projects` is absent or empty hosts one project:

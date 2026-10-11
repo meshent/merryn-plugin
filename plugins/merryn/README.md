@@ -3,7 +3,7 @@
 A Claude Code plugin for working any Merryn instance: one tenant's backlog, its domain charters, its desk and
 its docs. Nothing in it names a tenant's product repositories, a model or a person; everything tenant-specific comes from the
 instance at run time (`get_domain` for the charter, `get_policy` for routing, the items themselves). The only
-instance it names is Mira's own (`merryn-mira`), as the default server name and the worked example below. A
+instance it names is Mira's own (`merryn-mira`), as the worked example below; no command defaults to it. A
 tenant that needs more layers its own plugin on top of this one instead of forking it.
 
 ## What's here
@@ -50,8 +50,8 @@ claude mcp add --transport http -s user merryn-acme https://merryn-acme.example.
   --header 'Authorization: Bearer ${MERRYN_ACME_TOKEN}'
 ```
 
-Tokens are registry tokens (`mk_…`) with the `read` and `work` scopes (`admin` only if the skill should answer
-desk questions). Ask the instance's owner to mint one per device, harness and model (board: **Tokens**), so
+Tokens are registry tokens (`mk_…`) with the `read` and `work` scopes, plus `answer` where the session should
+record desk answers (a project-bound token can carry it; `admin` implies it). Ask the instance's owner to mint one per device, harness and model (board: **Tokens**), so
 the board attributes the work. Never put a token in a repository file, a project `.claude/settings.json`, a
 URL or a chat.
 
@@ -63,20 +63,21 @@ claude plugin install merryn@meshent --scope user
 claude plugin update merryn@meshent                  # later, to pick up changes
 ```
 
-Invoke it inside Claude Code as `/merryn` (fully qualified: `/merryn:merryn`), with any of `--server <name>` (default `merryn-mira`;
-the name this device registered), `--project <id>`, `--domain <id>`, `--items <key>…`, `--rounds N`, `--dry-run`,
+Invoke it inside Claude Code as `/merryn [project] [verb] [flags]` (fully qualified: `/merryn:merryn`). Bare
+`/merryn` runs the backlog loop; the loop takes `--domain <id>`, `--items <key>…`, `--rounds N`, `--dry-run` and
 `--no-merge`. Run `--dry-run` first against a new instance: it prints the lane table and dispatches nothing.
 
-The worker skills take the same `--server` and `--project`:
+| verb | runs | options |
+|---|---|---|
+| *(none)*, `loop` | the backlog loop | as above |
+| `answer` | `/merryn:answer`, the desk; needs the `answer` scope (admin implies it) and stops before reading anything without one | `--domain <id>`, `--assist` (distil a long desk into principles), `--auto` (unattended) |
+| `status` | where the project stands; read only | none |
+| `pause` / `stop` | release this session's leases (after finishing what is in flight / now) | none |
+| `run <domain>` | `/merryn:run` | `--item <key>` (work that one ticket), `--session <label>` (a dispatcher's label), `--tier <tier>…` (overrides what the routing policy gives your model), `--max N` (default 3) |
+| `feature [key]` | `/merryn:feature` | `--domain <id>`, `--session <label>`, `--probe-only`, `--dry-run`, `--rounds N` (default 3) |
+| `groom <domain>` | `/merryn:groom` | `--item <key>` (work that one design ticket), `--session <label>` (a dispatcher's label), `--dry-run` |
 
-| command | options |
-|---|---|
-| `/merryn:run <domain>` | `--item <key>` (work that one ticket), `--session <label>` (a dispatcher's label), `--tier <tier>…` (overrides what the routing policy gives your model), `--max N` (default 3) |
-| `/merryn:feature [key]` | `--domain <id>`, `--session <label>`, `--probe-only`, `--dry-run`, `--rounds N` (default 3) |
-| `/merryn:groom <domain>` | `--item <key>` (work that one design ticket), `--session <label>` (a dispatcher's label), `--dry-run` |
-| `/merryn:answer` | `--domain <id>`, `--assist` (distil a long desk into principles), `--auto` (unattended; needs `admin`) |
-
-Invoke every worker skill by its qualified name, **`/merryn:<skill>`**. The qualified form avoids collisions:
+When you call a worker skill directly, use its qualified name, **`/merryn:<skill>`**. The qualified form avoids collisions:
 Claude Code has a built-in `/run`, and another installed plugin may ship its own `feature`, `groom` or
 `answer`, so a bare name may reach a different skill (and a different instance). This README, the skills and
 `/merryn`'s lane briefs always use the qualified form.
@@ -84,22 +85,20 @@ Claude Code has a built-in `/run`, and another installed plugin may ship its own
 ## Which command for which project
 
 Each instance gets **one MCP server registration** on each device: a server name, the instance's URL and the
-variable that holds that device's token (see "Register the instance" above). The server name selects the
-instance; when the instance hosts several projects (`list_projects`), `--project <id>` selects the project
-inside it. Pass both to every command:
+variable that holds that device's token (see "Register the instance" above). In claude.ai the connectors are
+named like `Merryn_<Project>`. The project word picks the connector, so `/merryn mira answer --assist` runs Mira's
+desk. Leave it out and every skill resolves the connector the same way (`skills/_instance/README.md` ›
+*Choosing the connector*):
 
-| to | run |
-|---|---|
-| work the whole backlog, landing included | `/merryn --server <name> --project <id>` |
-| work one domain's tickets | `/merryn:run <domain> --server <name> --project <id>` |
-| work cross-cutting features | `/merryn:feature [key] --server <name> --project <id>` |
-| keep a domain's queue true | `/merryn:groom <domain> --server <name> --project <id>` |
-| answer the desk | `/merryn:answer --server <name> --project <id>` |
+1. the project or `--server <name>` you named;
+2. else the only Merryn connector attached;
+3. else the one whose project matches the session's repository or Claude project name;
+4. else it asks which project, and calls nothing until you answer.
 
-With no `--server`, every command uses `merryn-mira`, Mira's own instance; with no `--project`, it works every
-project on the instance. A project that needs more than the generic loop (its own lanes, detectors or standing
-rules) ships a layer plugin of its own whose skills wrap these with its server name, project and specifics;
-run the layer's commands for that project.
+There is no default server name. An instance-wide connector that serves several projects still takes
+`--project <id>` to pick one inside it. A project that needs more than the generic loop (its own lanes, detectors
+or standing rules) ships a layer plugin of its own whose skills wrap these with its specifics; run the layer's
+commands for that project.
 
 For local development only, `claude --plugin-dir /path/to/merryn-plugin/plugins/merryn` loads the working copy;
 it silently overrides an installed plugin of the same name, so drop it when you are done.
@@ -144,7 +143,7 @@ Harnesses without hooks (claude.ai, ChatGPT, Codex, Cursor) are covered by the i
 ## Another tenant
 
 One instance per tenant, one token and one server name per instance on each device. Pass the server name:
-`/merryn --server merryn-acme`. A run talks to exactly one instance, so work, questions and docs
+`/merryn acme` (or `/merryn --server merryn-acme`). A run talks to exactly one instance, so work, questions and docs
 for one tenant never land on another's; `--project` keeps it to one of that tenant's projects.
 
 ## Troubleshooting
