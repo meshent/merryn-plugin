@@ -127,7 +127,8 @@ lane's session label: `/merryn:run <domain> --item <key> --session <label>` for 
 for a design-tier item. Always the qualified `/merryn:<skill>` name: a bare one may reach a built-in or another
 installed plugin's skill, and with it a different instance. Its `claim` under that label is a heartbeat of the
 lease you pulled. Brief every lane with, verbatim:
-- The instance name, the item key, the session label, the branch, the base (`origin/<default>`), the
+- The instance name, the item key, the session label, the branch, the base (what the charter's branch model
+  names: `origin/release` where a release train publishes, else `origin/<default>`), the
   worktree path (one per lane), the charter rules, the files that are off limits.
 - Claim first (`claim` with the session label); heartbeat every 15 minutes; if a heartbeat fails twice,
   keep working and note it.
@@ -159,7 +160,8 @@ while its PR is still landing. Close that gap at once:
 Then, under that lease:
 1. Fetch the branch; run the repository's tests on a clean checkout yourself (0 skipped); grep for anything
    the charter forbids in the core (tenant names, person names, hash routing, floating package versions).
-2. Open the PR from the lane's branch with a body that states what landed, test counts, review findings and
+2. Open the PR from the lane's branch into the lane's base (`release` where a release train publishes, else the
+   default branch) with a body that states what landed, test counts, review findings and
    the decisions for veto. Stack it on the right base when branches depend on each other.
 3. **Independent review before merge.** Dispatch one reviewer agent per PR with a verification brief (build,
    tests, security surface, charter, merge-tree against the base); it posts a *comment* review (a formal
@@ -173,7 +175,9 @@ Then, under that lease:
    Cite the review URL in the merge body. `--no-merge` leaves every PR open for the owner.
    A PR whose commits **you** authored (not a lane) will be refused as self-approval: put it in the
    close-out batch instead of retrying (and release `blocked` as above).
-5. Publish flows from the default branch. When a package publishes, the consumers that **pin** it need a
+5. Publish flows from the default branch. Where a release train publishes, a merge into `release` publishes
+   nothing: the train builds, publishes and promotes `release` to the default branch, and it runs live only
+   when the owner approves a proposed release. When a package publishes, the consumers that **pin** it need a
    pin bump: a lane authors it, a reviewer verifies the new versions resolve and tests pass, you merge.
    Hosts deploy from their pin bump; if a host's template changed (new containers, new exclusions), the
    infrastructure script runs **before** the code publish: run it yourself only when a permission rule or the
