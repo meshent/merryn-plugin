@@ -78,8 +78,9 @@ The domain is the argument. If none was given, `list_domains`, ask which domain,
 ## Step 3 — work each ticket
 One ticket at a time, up to `--max N` (default 3) or until context runs heavy or a blocker hits:
 1. **A new worktree for this session**, never the shared checkout or another session's worktree: fetch, then
-   `git worktree add` a short path from the branch (or from `origin/<default>` when the branch does not exist
-   yet). If the branch is checked out elsewhere, work detached and push by ref (`git push origin HEAD:<branch>`).
+   `git worktree add` a short path from the branch (or, when the branch does not exist yet, from the base the
+   charter's branch model names: `origin/release` where a release train publishes, else `origin/<default>`).
+   If the branch is checked out elsewhere, work detached and push by ref (`git push origin HEAD:<branch>`).
    A non-fast-forward means the branch moved: fetch and rebase onto it, never force. Stage explicit paths only.
 2. Read the existing code first, then implement to every acceptance criterion. Build and test with the
    repository's own commands (its README, its CI workflow); tests come with every change. Anything that reads
