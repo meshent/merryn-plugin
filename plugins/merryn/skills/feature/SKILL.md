@@ -65,14 +65,16 @@ Vocabulary: **project**, **domains** (each with a charter), **tickets** (a featu
    domain gets groomed away as noise. Check enumerations member by member: a missing member is the usual blocker.
 3. **Probe each seam at the level the consumer actually uses.** Verdicts: `present` (where the consumer gets
    it: the published package it restores, the deployed API it calls, the default branch it builds from),
-   `unpublished` (on the default branch, not yet where the consumer gets it), `unmerged` (only on a work
-   branch), `missing`. Probing the source tree and stopping there is the classic error.
+   `unpublished` (merged into the branch that publishes, `release` where a release train publishes, else the
+   default branch, but not yet where the consumer gets it), `unmerged` (only on a work branch), `missing`.
+   Probing the source tree and stopping there is the classic error.
 4. **READY** when every seam is `present`: Step 3. Otherwise **NOT READY**: Step 4.
 `--probe-only` stops here, reports the verdicts and releases `abandon` with them in the note.
 
 ## Step 3 — build the aggregate (READY only)
-1. A new worktree for this session on `wip/<key-lowercased>` (or the branch the charter names) from the
-   repository's default branch, resolved from git (`git symbolic-ref refs/remotes/origin/HEAD`), never from a doc.
+1. A new worktree for this session on `wip/<key-lowercased>` (or the branch the charter names) from the base the
+   charter's branch model names: `origin/release` where a release train publishes, else the repository's default
+   branch, resolved from git (`git symbolic-ref refs/remotes/origin/HEAD`), never from a doc.
 2. Implement to **every** acceptance criterion; they are the definition of done. If you are writing what is
    plainly a domain's own abstraction, stop: that is a Step 4 request.
 3. Anything that reads or writes data scoped to a caller (a user, an account, a tenant) checks the
