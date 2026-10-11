@@ -64,9 +64,9 @@ claude plugin install merryn@meshent --scope user
 claude plugin update merryn@meshent                  # later, to pick up changes
 ```
 
-Invoke it inside Claude Code as `/merryn [project] [verb] [flags]` (fully qualified: `/merryn:merryn`); the verb
-may also come first, before the project (`/merryn loop mira`). Bare `/merryn`, `/merryn mira loop` and
-`/merryn:loop mira` all run the backlog loop; the loop takes `--domain <id>`, `--items <key>…`, `--rounds N`, `--dry-run` and
+Invoke it inside Claude Code as `/merryn [verb] [project] [flags]` (fully qualified: `/merryn:merryn`). The project
+is optional: leave it out when one Merryn connector is attached. Project first (`/merryn mira loop`) is accepted
+too. Bare `/merryn`, `/merryn loop mira` and `/merryn:loop mira` all run the backlog loop; the loop takes `--domain <id>`, `--items <key>…`, `--rounds N`, `--dry-run` and
 `--no-merge`. Run `--dry-run` first against a new instance: it prints the lane table and dispatches nothing.
 
 | verb | runs | options |
@@ -88,7 +88,7 @@ Claude Code has a built-in `/run`, and another installed plugin may ship its own
 
 Each instance gets **one MCP server registration** on each device: a server name, the instance's URL and the
 variable that holds that device's token (see "Register the instance" above). In claude.ai the connectors are
-named like `Merryn_<Project>`. The project word picks the connector, so `/merryn mira answer --assist` runs Mira's
+named like `Merryn_<Project>`. The project word picks the connector, so `/merryn answer mira --assist` runs Mira's
 desk. Leave it out and every skill resolves the connector the same way (`skills/_instance/README.md` ›
 *Choosing the connector*):
 
@@ -144,8 +144,8 @@ Harnesses without hooks (claude.ai, ChatGPT, Codex, Cursor) are covered by the i
 
 ## Another tenant
 
-One instance per tenant, one token and one server name per instance on each device. Pass the server name:
-`/merryn acme` (or `/merryn --server merryn-acme`). A run talks to exactly one instance, so work, questions and docs
+One instance per tenant, one token and one server name per instance on each device. Pass the project or server name:
+`/merryn loop acme` (or `/merryn --server merryn-acme`). A run talks to exactly one instance, so work, questions and docs
 for one tenant never land on another's; `--project` keeps it to one of that tenant's projects.
 
 ## Troubleshooting

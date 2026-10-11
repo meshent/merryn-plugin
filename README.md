@@ -25,16 +25,16 @@ To pick up changes later, run `claude plugin update merryn@meshent`.
 
 ## Which command for which project
 
-One command, `/merryn [project] [verb]` (the verb may also come first: `/merryn loop mira`):
+One command, `/merryn [verb] [project]`. The project is optional when one Merryn connector is attached, and
+project first (`/merryn mira loop`) is accepted too:
 
 ```
 /merryn                          the backlog loop, landing included
-/merryn mira                     the same, for the mira project
-/merryn mira loop                the same, with the verb spelled out (also /merryn loop mira, /merryn:loop mira)
-/merryn mira answer              the desk (needs the answer scope)
-/merryn mira answer --assist     the desk distilled into a few principle-level questions
-/merryn mira status              where the project stands; read only
-/merryn mira run <domain>        one domain's tickets (also: groom <domain>, feature [key], pause, stop)
+/merryn loop mira                the same, for the mira project (qualified: /merryn:loop mira)
+/merryn answer mira              the desk (needs the answer scope)
+/merryn answer mira --assist     the desk distilled into a few principle-level questions
+/merryn status mira              where the project stands; read only
+/merryn run mira <domain>        one domain's tickets (also: groom, feature, pause, stop)
 ```
 
 The project picks the Merryn connector. When you leave it out, the skill uses the only Merryn connector

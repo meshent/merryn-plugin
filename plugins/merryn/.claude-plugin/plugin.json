@@ -1,7 +1,7 @@
 {
   "name": "merryn",
-  "version": "0.3.2",
-  "description": "Merryn's generic Claude Code skills for any tenant instance, under one command: /merryn [project] [verb] (bare /merryn, /merryn [project] loop or /merryn:loop runs the backlog loop; verbs loop, answer [--assist|--auto], status, pause, stop, run, groom, feature), the shared instance, review and docs contracts, and a SessionStart hook that checks each session in with the instance",
+  "version": "0.3.3",
+  "description": "Merryn's generic Claude Code skills for any tenant instance, under one command: /merryn [verb] [project], the project optional (bare /merryn, /merryn loop [project] or /merryn:loop [project] runs the backlog loop; verbs loop, answer [--assist|--auto], status, pause, stop, run, groom, feature), the shared instance, review and docs contracts, and a SessionStart hook that checks each session in with the instance",
   "author": {
     "name": "meshent"
   },
