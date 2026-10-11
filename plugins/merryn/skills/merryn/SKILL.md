@@ -1,6 +1,6 @@
 ---
 name: merryn
-description: Autonomous backlog loop for any Merryn instance — pull, dispatch lanes, review, merge, publish, deploy, close out; repeat until the queue is dry. Usage /merryn [--server <mcp-name>] [--project <id>] [--domain <id>...] [--items <key>...] [--rounds N] [--dry-run] [--no-merge]
+description: "Merryn from one command. Usage /merryn [project] [verb] [flags]. Bare /merryn starts the backlog loop (pull, dispatch lanes, review, merge, publish, deploy, close out; repeat until the queue is dry). Verbs: answer [--assist|--auto], status, pause, stop, run <domain>, groom <domain>, feature [key]. The project is inferred when one Merryn connector is attached or the session names it, and asked for otherwise. Loop flags: --domain <id>..., --items <key>..., --rounds N, --dry-run, --no-merge."
 ---
 
 You are the **coordinator** for one Merryn instance. You run the loop the platform was built for: agents
@@ -9,10 +9,33 @@ threshold, git stays the durable copy. You dispatch lanes; you do not implement 
 yourself. Everything you know about the tenant comes from the instance: its domain charters, its items, its
 decisions and its knowledge index. Nothing tenant-specific is written in this file.
 
+## Reading the command
+`/merryn [project] [verb] [flags]`, every part optional:
+- **project**: the first word, when it names a connected Merryn project (`mira`, `acme`). Resolve the connector
+  from it as Step 0 says. A first word that is a verb is the verb, and the project is inferred.
+- **verb**, default `loop`:
+
+| verb | what runs |
+|---|---|
+| *(none)*, `loop` | this file: the backlog loop |
+| `answer` | `/merryn:answer` (the desk); `--assist` distils it into principles, `--auto` runs it unattended |
+| `status` | read only: `list_active`, `list_open_questions`, `list_items` todo and blocked, `get_domain` each; report what is in progress, what waits on a person and what is pullable next, ending `READY`, `WAITING` or `DRY` |
+| `pause` | finish what is in flight, pull nothing new, release every lease this session holds as `handoff` with `resumeFrom`, report `PAUSED` |
+| `stop` | release every lease this session holds now (`handoff` for pushed commits, else `abandon`), report `STOPPED` |
+| `run <domain>` | `/merryn:run <domain>` |
+| `groom <domain>` | `/merryn:groom <domain>` |
+| `feature [key]` | `/merryn:feature [key]` |
+
+Hand the resolved connector (`--server <name>`) and the rest of the flags to the skill a verb names, and follow
+that skill instead of this file. The long forms (`/merryn:answer --server <name> --assist` and the like) still
+work, but never ask the person to type them: `/merryn mira answer --assist` is the form to show. A word that is
+neither a connected project nor a verb is an error: list both and stop.
+
 ## Step 0 — bind to the instance
-- `--server <name>` names the MCP server for the instance (default `merryn-mira`). The name is whatever this
-  device registered at user scope for the instance (see the plugin README); pass that name for any other tenant.
-  Its tools are `mcp__<name>__*`.
+- **The connector.** `[project]` (the first word, when it names a connected project) or `--server <name>` picks the
+  Merryn connector; resolve it as `${CLAUDE_PLUGIN_ROOT}/skills/_instance/README.md` › *Choosing the connector*
+  says, before any other call, and never fall back to a default name. Its tools are `mcp__<name>__*`. One run
+  talks to exactly one connector.
   If MCP is unavailable, use the REST twin at the instance's public URL. Never put the token's value on a
   command line (argv is visible to other processes and lands in transcripts): pipe the header to curl on
   stdin, written by the shell's built-in `printf` from the variable the device's registration reads:

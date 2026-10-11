@@ -26,6 +26,25 @@ pull and doc bodies); a lane serving one project always passes it. An unknown pr
 empty list. An instance that does not serve `list_projects`, or lists none, hosts one project: pass no
 `project` there.
 
+## Choosing the connector
+
+A session can have several Merryn connectors attached, one per instance or per project-bound token. Claude Code
+registrations are usually named `merryn-<tenant>`; claude.ai connectors look like `Merryn_<Project>`, so their
+tools are `mcp__Merryn_<Project>__*`. A connector is a Merryn one when its tools include `pull_work` and
+`list_open_questions`. Every skill in this plugin resolves the connector the same way, before its first call:
+
+1. **Named:** the `[project]` word or `--server <name>` the person typed. Match it case-insensitively against
+   each connector's name with any `merryn`/`Merryn_` prefix and `-`/`_` removed, and against the project its
+   instructions name ("This token works in project '<id>' only"). If nothing matches, list the connected ones
+   and stop.
+2. **Only one:** exactly one Merryn connector is attached, so use it.
+3. **Inferred:** exactly one connector matches the session's repository name or the Claude project's name.
+4. **Ask:** otherwise, ask which project, offering the connected ones by name. Call nothing until they answer.
+   Never fall back to a default name.
+
+A connector bound to one project is that project: pass no `--project`. An instance-wide connector serving several
+projects still takes `--project <id>` (or the `[project]` word, which then names the project inside it).
+
 ## The tool map
 
 One line each: what it does · scope · REST twin (relative to `/api/v1`).
