@@ -25,15 +25,16 @@ To pick up changes later, run `claude plugin update merryn@meshent`.
 
 ## Which command for which project
 
-One command, `/merryn [project] [verb]`:
+One command, `/merryn [verb] [project]`. The project is optional when one Merryn connector is attached, and
+project first (`/merryn mira loop`) is accepted too:
 
 ```
 /merryn                          the backlog loop, landing included
-/merryn mira                     the same, for the mira project
-/merryn mira answer              the desk (needs the answer scope)
-/merryn mira answer --assist     the desk distilled into a few principle-level questions
-/merryn mira status              where the project stands; read only
-/merryn mira run <domain>        one domain's tickets (also: groom <domain>, feature [key], pause, stop)
+/merryn loop mira                the same, for the mira project (qualified: /merryn:loop mira)
+/merryn answer mira              the desk (needs the answer scope)
+/merryn answer mira --assist     the desk distilled into a few principle-level questions
+/merryn status mira              where the project stands; read only
+/merryn run mira <domain>        one domain's tickets (also: groom, feature, pause, stop)
 ```
 
 The project picks the Merryn connector. When you leave it out, the skill uses the only Merryn connector
@@ -50,6 +51,7 @@ Registration and options: [plugins/merryn/README.md](plugins/merryn/README.md#wh
 plugins/merryn/
   .claude-plugin/plugin.json        the "merryn" plugin
   skills/merryn/SKILL.md            /merryn, the backlog loop
+  skills/loop/SKILL.md              /merryn:loop, the loop's qualified name (hands off to /merryn)
   skills/run/SKILL.md               /merryn:run, the worker loop over one domain
   skills/feature/SKILL.md           /merryn:feature, cross-cutting features
   skills/groom/SKILL.md             /merryn:groom, keep a domain's queue true

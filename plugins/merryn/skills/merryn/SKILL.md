@@ -1,6 +1,6 @@
 ---
 name: merryn
-description: "Merryn from one command. Usage /merryn [project] [verb] [flags]. Bare /merryn starts the backlog loop (pull, dispatch lanes, review, merge, publish, deploy, close out; repeat until the queue is dry). Verbs: answer [--assist|--auto], status, pause, stop, run <domain>, groom <domain>, feature [key]. The project is inferred when one Merryn connector is attached or the session names it, and asked for otherwise. Loop flags: --domain <id>..., --items <key>..., --rounds N, --dry-run, --no-merge."
+description: "Merryn from one command. Usage /merryn [verb] [project] [flags]; the project is optional and may also come first (/merryn [project] [verb]). Bare /merryn, or the loop verb (/merryn loop, /merryn loop mira, qualified /merryn:loop mira), starts the backlog loop (pull, dispatch lanes, review, merge, publish, deploy, close out; repeat until the queue is dry). Verbs: loop, answer [--assist|--auto], status, pause, stop, run <domain>, groom <domain>, feature [key]. The project is inferred when one Merryn connector is attached or the session names it, and asked for otherwise. Loop flags: --domain <id>..., --items <key>..., --rounds N, --dry-run, --no-merge."
 ---
 
 You are the **coordinator** for one Merryn instance. You run the loop the platform was built for: agents
@@ -10,10 +10,18 @@ yourself. Everything you know about the tenant comes from the instance: its doma
 decisions and its knowledge index. Nothing tenant-specific is written in this file.
 
 ## Reading the command
-`/merryn [project] [verb] [flags]`, every part optional:
-- **project**: the first word, when it names a connected Merryn project (`mira`, `acme`). Resolve the connector
-  from it as Step 0 says. A first word that is a verb is the verb, and the project is inferred.
-- **verb**, default `loop`:
+`/merryn [verb] [project] [flags]`, every part optional:
+- **verb**, default `loop`. `/merryn`, `/merryn loop` and `/merryn loop mira` all start the same loop, and
+  `/merryn:loop [project]` is its qualified form (it hands off to this file).
+- **project**: a word that names a connected Merryn project (`mira`, `acme`), right after the verb and before
+  the verb's own arguments (`/merryn run mira billing`). It is optional: with only one Merryn connector attached,
+  or a session that names its project, leave it out. Resolve the connector from it as Step 0 says; with no
+  project word, the project is inferred.
+- **Project first is accepted too**: `/merryn mira`, `/merryn mira loop` and `/merryn mira run billing` mean the
+  same as the verb-first forms. Teach and show the verb-first form; read either.
+- **A word that is both** a verb and a connected project's name: in first position it is the verb (verb first is
+  the documented order), so `/merryn status` is the status verb; name that project after a verb
+  (`/merryn loop status`). Right after a verb, a word that is both is the project.
 
 | verb | what runs |
 |---|---|
@@ -28,11 +36,11 @@ decisions and its knowledge index. Nothing tenant-specific is written in this fi
 
 Hand the resolved connector (`--server <name>`) and the rest of the flags to the skill a verb names, and follow
 that skill instead of this file. The long forms (`/merryn:answer --server <name> --assist` and the like) still
-work, but never ask the person to type them: `/merryn mira answer --assist` is the form to show. A word that is
-neither a connected project nor a verb is an error: list both and stop.
+work, but never ask the person to type them: `/merryn answer mira --assist` is the form to show. A word in
+a project or verb position that is neither a connected project nor a verb is an error: list both and stop.
 
 ## Step 0 — bind to the instance
-- **The connector.** `[project]` (the first word, when it names a connected project) or `--server <name>` picks the
+- **The connector.** `[project]` (the project word, right after the verb or first, as *Reading the command* says) or `--server <name>` picks the
   Merryn connector; resolve it as `${CLAUDE_PLUGIN_ROOT}/skills/_instance/README.md` › *Choosing the connector*
   says, before any other call, and never fall back to a default name. Its tools are `mcp__<name>__*`. One run
   talks to exactly one connector.

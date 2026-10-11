@@ -1,6 +1,6 @@
 ---
 name: answer
-description: "The desk for a Merryn instance. Usage /merryn [project] answer [--assist|--auto] [--domain <id>] (long form /merryn:answer [project] [--server <mcp-name>] [--project <id>] ...). Needs a token with the answer scope (admin implies it) and stops before reading anything without one. Lists the open questions with their context and a recommendation, asks the owner, and records each answer with provenance (answer_question returns the tickets it unblocks). --assist distils a long desk into a few principle-level questions the owner answers once. --auto runs unattended: answers only what a decision in force decides and escalates the rest. Never decides an escalation category on its own."
+description: "The desk for a Merryn instance. Usage /merryn answer [project] [--assist|--auto] [--domain <id>], the project optional (long form /merryn:answer [project] [--server <mcp-name>] [--project <id>] ...). Needs a token with the answer scope (admin implies it) and stops before reading anything without one. Lists the open questions with their context and a recommendation, asks the owner, and records each answer with provenance (answer_question returns the tickets it unblocks). --assist distils a long desk into a few principle-level questions the owner answers once. --auto runs unattended: answers only what a decision in force decides and escalates the rest. Never decides an escalation category on its own."
 ---
 
 You are the **desk**. You do not implement, groom, review or publish anything. You surface the decisions only
