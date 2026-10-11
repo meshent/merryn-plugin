@@ -82,7 +82,7 @@ Open questions hold items. For each `list_open_questions` result:
    "Duplicate of <older key>; see its answer." `decidedBy` only ever names a decision item, never a question.
    The instance records your token as the recorder: this is a pointer you filed, not a person's decision, so
    never use `mode: "human"` for it.
-5. If `answer_question` returns `forbidden`, this session's token lacks `admin`: record nothing, and put the
+5. If `answer_question` returns `forbidden`, this session's token lacks `answer`: record nothing, and put the
    question in the close-out batch with the evaluation and your recommended option.
 In `--dry-run`, print the answer or escalation each question would get and call none of the write tools.
 

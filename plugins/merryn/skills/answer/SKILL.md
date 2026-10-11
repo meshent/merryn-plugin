@@ -1,6 +1,6 @@
 ---
 name: answer
-description: "The desk for a Merryn instance. Usage /merryn [project] answer [--assist|--auto] [--domain <id>] (long form /merryn:answer [project] [--server <mcp-name>] [--project <id>] ...). Needs an admin token and stops before reading anything without one. Lists the open questions with their context and a recommendation, asks the owner, and records each answer with provenance (answer_question returns the tickets it unblocks). --assist distils a long desk into a few principle-level questions the owner answers once. --auto runs unattended: answers only what a decision in force decides and escalates the rest. Never decides an escalation category on its own."
+description: "The desk for a Merryn instance. Usage /merryn [project] answer [--assist|--auto] [--domain <id>] (long form /merryn:answer [project] [--server <mcp-name>] [--project <id>] ...). Needs a token with the answer scope (admin implies it) and stops before reading anything without one. Lists the open questions with their context and a recommendation, asks the owner, and records each answer with provenance (answer_question returns the tickets it unblocks). --assist distils a long desk into a few principle-level questions the owner answers once. --auto runs unattended: answers only what a decision in force decides and escalates the rest. Never decides an escalation category on its own."
 ---
 
 You are the **desk**. You do not implement, groom, review or publish anything. You surface the decisions only
@@ -18,15 +18,15 @@ hold tickets until someone answers them.
   talks to exactly one connector.
 - `--project <id>` keeps the desk to one project when the instance hosts several (`list_projects` lists them):
   pass it as `project` on `list_open_questions` and `submit_doc`. `--domain` narrows the desk to one domain.
-- **Gate: an admin token, checked first.** Recording needs the `admin` scope (`answer_question`,
-  `reopen_question`), which only an instance-wide token carries; a project-bound connector never does. Before
+- **Gate: a token that can record, checked first.** Recording needs the `answer` scope (`answer_question`,
+  `reopen_question`); `admin` implies it, and a project-bound connector can carry it for its own project. Before
   reading a single question, check that the bound connector's tools include `answer_question`. If they don't,
   stop at once. Read nothing, distil nothing and ask nothing, because the owner's answers would have nowhere to
-  go. Say in one line that this connector can't record desk answers and that the desk runs from an admin
-  connector for this instance (a token minted on the board under **Tokens** with no project). If another
-  attached Merryn connector for the same instance has `answer_question`, name it and offer to run the desk
-  there. Should a call still answer `forbidden` mid-run, stop recording and report what was recorded and what
-  was not.
+  go. Say in one line that this connector can't record desk answers and that it needs the `answer` scope
+  (reconnect the connector and tick *record desk answers*, or mint a token with `answer` on the board under
+  **Tokens**). If another attached Merryn connector for the same project has `answer_question`, name it and
+  offer to run the desk there. Should a call still answer `forbidden` mid-run, stop recording and report what
+  was recorded and what was not.
 - If MCP is unavailable, use the REST twin (`${CLAUDE_PLUGIN_ROOT}/skills/_instance/README.md`; open questions
   are `GET /items?kind=question&status=todo`). The token never goes on a command line: pipe the header to curl
   on stdin, written by the shell's built-in `printf` from the variable the device's registration reads:

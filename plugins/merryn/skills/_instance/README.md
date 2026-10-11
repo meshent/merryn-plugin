@@ -5,8 +5,9 @@ A Merryn instance serves one tenant (an organization), which may hold several pr
 bearer token (`Authorization: Bearer mk_…`), the same scopes and the same rate limit, so a skill may use either
 and get the same behaviour. `GET /api/openapi.json` is the REST schema.
 
-**Scopes.** `read` sees; `work` pulls, claims, writes items and submits docs; `admin` answers the desk,
-reopens questions and changes charters. `tools/list` only shows the tools your token's scopes allow; a call
+**Scopes.** `read` sees; `work` pulls, claims, writes items and submits docs; `answer` answers and reopens
+the desk's questions and records the principles the owner approves there, in the token's own project (it can be
+bound to one, unlike admin); `admin` implies it and also changes charters. `tools/list` only shows the tools your token's scopes allow; a call
 without the scope answers `forbidden`.
 
 **Binding.** Each device registers the instance as a user-scope MCP server (the plugin README shows how; the
@@ -83,8 +84,8 @@ One line each: what it does · scope · REST twin (relative to `/api/v1`).
 | tool | purpose | scope | REST |
 |---|---|---|---|
 | `list_open_questions` | every open question with what each one holds (unbounded) | read | `GET /items?kind=question&status=todo` (full items, default limit 1000, `limit` up to 5000) |
-| `answer_question` | record an answer with provenance; returns the items it held to todo | admin | `POST /items/{key}/answer` |
-| `reopen_question` | the veto: archive the answer, return the question to the desk, hold its items again | admin | `POST /items/{key}/reopen` |
+| `answer_question` | record an answer with provenance; returns the items it held to todo | answer (admin implies it) | `POST /items/{key}/answer` |
+| `reopen_question` | the veto: archive the answer, return the question to the desk, hold its items again | answer (admin implies it) | `POST /items/{key}/reopen` |
 | `desk_evaluate` | deterministic signals for one question: escalation categories hit, candidate decisions, similar and duplicate questions; decides nothing | read | `GET /desk/evaluate/{key}` |
 | `get_escalation_policy` | the categories that always go to a person (tenant default overlaid by the domain's) | read | `GET /escalation-policy`, `GET /domains/{id}/escalation-policy` |
 | `get_decision` | one decision or answered question, its citations and its supersededBy chain | read | `GET /decisions/{key}` |

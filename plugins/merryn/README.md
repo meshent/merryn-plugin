@@ -50,8 +50,8 @@ claude mcp add --transport http -s user merryn-acme https://merryn-acme.example.
   --header 'Authorization: Bearer ${MERRYN_ACME_TOKEN}'
 ```
 
-Tokens are registry tokens (`mk_…`) with the `read` and `work` scopes (`admin` only if the skill should answer
-desk questions). Ask the instance's owner to mint one per device, harness and model (board: **Tokens**), so
+Tokens are registry tokens (`mk_…`) with the `read` and `work` scopes, plus `answer` where the session should
+record desk answers (a project-bound token can carry it; `admin` implies it). Ask the instance's owner to mint one per device, harness and model (board: **Tokens**), so
 the board attributes the work. Never put a token in a repository file, a project `.claude/settings.json`, a
 URL or a chat.
 
@@ -70,7 +70,7 @@ Invoke it inside Claude Code as `/merryn [project] [verb] [flags]` (fully qualif
 | verb | runs | options |
 |---|---|---|
 | *(none)*, `loop` | the backlog loop | as above |
-| `answer` | `/merryn:answer`, the desk; needs an admin token and stops before reading anything without one | `--domain <id>`, `--assist` (distil a long desk into principles), `--auto` (unattended) |
+| `answer` | `/merryn:answer`, the desk; needs the `answer` scope (admin implies it) and stops before reading anything without one | `--domain <id>`, `--assist` (distil a long desk into principles), `--auto` (unattended) |
 | `status` | where the project stands; read only | none |
 | `pause` / `stop` | release this session's leases (after finishing what is in flight / now) | none |
 | `run <domain>` | `/merryn:run` | `--item <key>` (work that one ticket), `--session <label>` (a dispatcher's label), `--tier <tier>…` (overrides what the routing policy gives your model), `--max N` (default 3) |

@@ -30,7 +30,7 @@ One command, `/merryn [project] [verb]`:
 ```
 /merryn                          the backlog loop, landing included
 /merryn mira                     the same, for the mira project
-/merryn mira answer              the desk (needs an admin token)
+/merryn mira answer              the desk (needs the answer scope)
 /merryn mira answer --assist     the desk distilled into a few principle-level questions
 /merryn mira status              where the project stands; read only
 /merryn mira run <domain>        one domain's tickets (also: groom <domain>, feature [key], pause, stop)
