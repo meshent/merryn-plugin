@@ -63,6 +63,7 @@ plugins/merryn/
   hooks/check-in.js                 what it runs: the session check-in (node)
 scripts/check.py                    the checks CI runs (manifests, skills, secrets, tenant names)
 scripts/test-hook.js                the hook's tests against a fake instance on localhost
+scripts/test-check.py               mutation tests for check.py's gates
 ```
 
 ## The session check-in
@@ -84,6 +85,17 @@ Everything here is generic: it names no tenant's products, repositories or peopl
 host, token or account id. Tenant specifics come from the instance at run time (charters, policy, items). A
 tenant that needs more should layer its own plugin on top of this one rather than fork it. `scripts/check.py`
 enforces part of this: it fails when any file or path names a tenant it knows the plugin was modelled on.
+It scans what git would commit (tracked files and untracked ones not ignored), reads UTF-16 with or without a
+byte-order mark, and drops invisible characters (zero-width, soft hyphen, joiners) before matching;
+`scripts/test-check.py` proves each of those with a mutation. Known limits, accepted:
+
+- The tenant terms are written literally in `check.py` (and in its history). Hashing them was considered; it
+  would hide nothing the history doesn't already show, and literal terms keep the failure message readable.
+- A binary file whose metadata carries a GUID or a long hex id fails the secret scan. That errs on the safe
+  side: strip the metadata, or keep the file out of the repository.
+- `/merryn:run` releases a ticket routed to another model and stops, rather than pulling again, because
+  `pull_work` would hand it the same ticket. A model whose only routing rule is a keyword rule therefore stops
+  at the first ticket that rule sends elsewhere; the handoff names the model to run instead.
 
 To try a working copy, run `claude --plugin-dir ./plugins/merryn`. It overrides an installed plugin of the same
 name, so drop the flag when you're done.

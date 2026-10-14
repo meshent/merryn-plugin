@@ -94,8 +94,10 @@ One line each: what it does · scope · REST twin (relative to `/api/v1`).
 `create_item` binds more fields than its advertised MCP schema lists: `question` (a question's text), `for`
 and `level` (a request's consumer and the seam's level) and `blockedReason` are accepted on create, by MCP and
 by `POST /items` alike. Pass every field the item needs in the one `create_item` call. Only if the client
-refuses a field outside the advertised schema, create without it and set it with one `update_item` (which
-accepts the same fields).
+refuses a field outside the advertised schema, create without it and set it with one `update_item`. That
+works for every field except on a question: its `question`, `title`, `options`, `blocks` and `status` belong to
+the desk, so patching them needs the `admin` scope (a work token gets `forbidden`). File a question with
+everything in the one `create_item` call, or with `release {outcome:"blocked", question}`.
 
 ### Knowledge
 | tool | purpose | scope | REST |

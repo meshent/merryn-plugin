@@ -20,6 +20,9 @@ Vocabulary: **project**, **domains** (each with a charter), **tickets**, **check
 - `--item <key>` (a dispatcher such as `/merryn` naming one design-tier ticket it has already pulled):
   `claim {key, session, branch}` instead of `pull_work`, then `route_item {key}` (Step 2), and work only that
   ticket: Step 1 for the charter and the record, the design-tier paragraph of Step 3 on it, then Steps 4 and 5.
+  If `route_item` assigns it to a different model than this session's, release it `abandon` with the note
+  "routed to <model>: <reason>", name that model in the handoff and stop; never work it, and never leave it
+  held.
   Grooming the rest of the queue is left to a run without `--item`. `--session <label>` takes the dispatcher's
   label; a claim under the label that already holds the ticket is a heartbeat. Without `--session`, use a
   label of your own (e.g. `groom-<domain>-<yyyymmdd-hhmm>`) and the same label on every later call.
