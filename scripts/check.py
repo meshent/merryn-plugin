@@ -9,6 +9,7 @@ excepted). Exits non-zero with one line per problem.
 """
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -31,8 +32,13 @@ TENANT_TERMS = [
     ("meshnet", re.compile(r"meshnet", re.I)),
     ("vo.cab", re.compile(r"vo\.cab", re.I)),
 ]
-# Zero-width characters a pasted name can carry; they are removed before matching.
-INVISIBLE = re.compile("[" + chr(0x200B) + "-" + chr(0x200D) + chr(0x2060) + chr(0xFEFF) + "]")
+# Invisible characters a pasted name can carry (soft hyphen, combining grapheme joiner, Mongolian vowel separator,
+# zero-width space and joiners, direction marks, word joiner and invisible operators, byte-order mark); they are
+# removed before matching.
+INVISIBLE = re.compile("[" + "".join(chr(c) for c in (0xAD, 0x34F, 0x180E)) + chr(0x200B) + "-" + chr(0x200F)
+                       + chr(0x2060) + "-" + chr(0x2064) + chr(0xFEFF) + "]")
+# A double-quoted YAML scalar: no bare quote inside, any backslash escape, then only a comment.
+DOUBLE_QUOTED = re.compile(r'^"(?:[^"\\]|\\.)*"(?:\s+#.*)?$')
 
 
 def front_matter(text):
@@ -53,21 +59,44 @@ def front_matter(text):
         value = (m.group(2) or "").strip()
         if value[:1] not in ('"', "'") and (": " in value or value.endswith(":")):
             raise ValueError(f"line {n}: an unquoted value may not contain ': '; quote it")
-        if value[:1] == '"' and (len(value) < 2 or not value.endswith('"') or '"' in value[1:-1].replace(chr(92) + '"', "")):
-            raise ValueError(f"line {n}: a double-quoted value must end with its quote and escape any quote inside it")
+        if value[:1] == '"':
+            if not DOUBLE_QUOTED.match(value):
+                raise ValueError(f"line {n}: a double-quoted value must end with its quote and escape any quote inside it")
+            value = value[:value.rindex('"') + 1]
         keys[m.group(1)] = value.strip("'\"")
     return keys
 
 
 def repo_files():
-    return sorted(p for p in ROOT.rglob("*") if p.is_file() and ".git" not in p.relative_to(ROOT).parts)
+    """What git would commit: tracked files plus untracked ones not ignored. Outside a git checkout, every file."""
+    try:
+        out = subprocess.run(["git", "-C", str(ROOT), "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
+                             capture_output=True, check=True).stdout
+        return sorted(p for p in (ROOT / f for f in out.decode("utf-8").split("\0") if f) if p.is_file())
+    except (OSError, subprocess.CalledProcessError):
+        return sorted(p for p in ROOT.rglob("*") if p.is_file() and ".git" not in p.relative_to(ROOT).parts)
+
+
+def utf16_without_bom(data):
+    """The byte order of UTF-16 text written without a byte-order mark (mostly ASCII, so every other byte is 0)."""
+    if len(data) < 4 or len(data) % 2:
+        return None
+    even, odd = data[0::2], data[1::2]
+    if odd.count(0) > len(odd) * 0.6 and even.count(0) < len(even) * 0.1:
+        return "utf-16-le"
+    if even.count(0) > len(even) * 0.6 and odd.count(0) < len(odd) * 0.1:
+        return "utf-16-be"
+    return None
 
 
 def read_lines(path):
-    """Every file as text: UTF-16 by its byte-order mark, else UTF-8, else Latin-1, so nothing is skipped unread."""
+    """Every file as text: UTF-16 by its byte-order mark or its zero bytes, else UTF-8, else Latin-1, so nothing is
+    skipped unread."""
     data = path.read_bytes()
     if data.startswith((b"\xff\xfe", b"\xfe\xff")):
         text = data.decode("utf-16")
+    elif utf16_without_bom(data):
+        text = data.decode(utf16_without_bom(data), errors="replace")
     else:
         try:
             text = data.decode("utf-8-sig")
@@ -77,6 +106,10 @@ def read_lines(path):
 
 
 def main():
+    # A path or line may carry characters the console cannot encode (a Windows code page); never crash printing it.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(errors="backslashreplace")
     problems = []
     market = json.loads((ROOT / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8"))
     plugins = market.get("plugins") or []
