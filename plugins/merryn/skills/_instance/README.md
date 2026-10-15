@@ -10,6 +10,16 @@ the desk's questions and records the principles the owner approves there, in the
 bound to one, unlike admin); `admin` implies it and also changes charters. `tools/list` only shows the tools your token's scopes allow; a call
 without the scope answers `forbidden`.
 
+**Project-bound tokens and links.** A token bound to one project links only inside it: a `parent`, `dependsOn` or
+`blocks` key it adds (`create_item`, `update_item`, `bulk_update`, clone) must name an existing item in its project, and
+another project's key answers exactly like a key that does not exist (400 `unknown-item`; `unknown-feature` for a
+parent); a released question's `blocks` drops such keys. Links already stored (made by an instance-wide token) are not
+re-judged by an edit that leaves them alone, but acting on them stays inside the project: answering or re-opening a
+question never unblocks, re-blocks or notes another project's item (each reads `not-found`, like a missing key, and
+items elsewhere that link the question are not listed); convert judges the parent again as the token sees it; the
+sub-task depth check counts only the project's own children. An instance-wide token links and acts across projects as
+before.
+
 **Binding.** Each device registers the instance as a user-scope MCP server (the plugin README shows how; the
 server name is whatever the device chose, `merryn-<tenant>` by convention). Without MCP, call the REST route below
 at the same host, piping the header to curl on stdin rather than putting it on the command line:
