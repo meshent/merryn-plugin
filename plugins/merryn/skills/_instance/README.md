@@ -148,6 +148,9 @@ everything in the one `create_item` call, or with `release {outcome:"blocked", q
 unpaged), `POST /items/{key}/watch` (work), `GET /docs` and `GET /docs/{id}` (submitted docs), `GET /knowledge/status`
 (read), `GET /templates` (read), `PATCH /templates` (admin), and the caller's own saved Tickets filters:
 `GET /filters`, `POST /filters`, `PATCH /filters/{id}` (`If-Match`) and `DELETE /filters/{id}` (read scope; a filter
-is the principal's own, in one project, and its `url` is the shareable `/tickets?<query>`). Admin: the token registry (`/agents`), import,
+is the principal's own, in one project, and its `url` is the shareable `/tickets?<query>`), and the ticket actions
+(work): `POST /items/{key}/clone`, `POST /items/{key}/convert` (`If-Match`; task, feature or question; converting an
+open question that holds nothing needs answer scope) and the caller's own comment's `PATCH` or
+`DELETE /items/{key}/comments/{id}` within 15 minutes of posting it. Admin: the token registry (`/agents`), import,
 mirror run and conflicts, escalation and routing policy writes, knowledge reindex. A skill in this plugin never
 calls an admin route unless the charter hands it that job.
