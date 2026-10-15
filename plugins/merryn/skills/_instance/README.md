@@ -10,6 +10,16 @@ the desk's questions and records the principles the owner approves there, in the
 bound to one, unlike admin); `admin` implies it and also changes charters. `tools/list` only shows the tools your token's scopes allow; a call
 without the scope answers `forbidden`.
 
+**Project-bound tokens and links.** A token bound to one project links only inside it: a `parent`, `dependsOn` or
+`blocks` key it adds (`create_item`, `update_item`, `bulk_update`, clone) must name an existing item in its project, and
+another project's key answers exactly like a key that does not exist (400 `unknown-item`; `unknown-feature` for a
+parent); a released question's `blocks` drops such keys. Links already stored (made by an instance-wide token) are not
+re-judged by an edit that leaves them alone, but acting on them stays inside the project: answering or re-opening a
+question never unblocks, re-blocks or notes another project's item (each reads `not-found`, like a missing key, and
+items elsewhere that link the question are not listed); convert judges the parent again as the token sees it; the
+sub-task depth check counts only the project's own children. An instance-wide token links and acts across projects as
+before.
+
 **Binding.** Each device registers the instance as a user-scope MCP server (the plugin README shows how; the
 server name is whatever the device chose, `merryn-<tenant>` by convention). Without MCP, call the REST route below
 at the same host, piping the header to curl on stdin rather than putting it on the command line:
@@ -68,8 +78,24 @@ One line each: what it does · scope · REST twin (relative to `/api/v1`).
 |---|---|---|---|
 | `list_items` | filtered list (domain, kind, status, tier, repo, q, limit, default 100); each entry is key, domain, kind, status, tier, priority, repo, title and the live lease holder; body, acceptance criteria, `blockedReason`, `blocks`, `dependsOn` and links are omitted (`get_item` each, or use the REST twin) | read | `GET /items?…` (adds owner and leased filters, returns full items, default limit 1000) |
 | `get_item` | one item: body, acceptance criteria, links, ETag and its last 20 events (`get_history` has them all) | read | `GET /items/{key}` (events: `GET /items/{key}/events`) |
-| `create_item` | create a task, feature, question, request, note or decision | work | `POST /items` |
-| `update_item` | patch fields with the item's ETag (412 when stale); status never becomes in-progress this way | work | `PATCH /items/{key}` with `If-Match` |
+| `create_item` | create a task, feature, question, request, note or decision; also takes `parent`, `labels`, `release`, `dueDate`, `storyPoints`, `assignee` (+`assigneeSoft`), `watchers` and `template` (below) | work | `POST /items` |
+| `update_item` | patch fields with the item's ETag (412 when stale); status never becomes in-progress this way; labels, dueDate (yyyy-MM-dd), storyPoints (0-100) and watchers too, never the assignee (use `assign_item`) | work | `PATCH /items/{key}` with `If-Match` |
+
+### Authoring and assignment (tickets)
+| tool | purpose | scope | REST |
+|---|---|---|---|
+| `draft_item` | describe it: free text, a pasted tracker row (header and row) or a tracker issue as JSON becomes a `create_item` draft for you to check; only keys in dependency phrases (depends on, blocked by, requires, after) become `dependsOn`, other keys come back as `related`; nothing is created | work | `POST /items/draft` |
+| `assign_item` | assign a ticket (intent, separate from the checkout): `me`, `next-free-agent`, a principal, or `none` to unassign; `soft` makes it a preference; an optional `reason`; each change appends an `assigned` event. `pull_work` offers you your own assigned tickets first and skips one hard-assigned to someone else | work | `POST /items/{key}/assign` |
+| `comment` | a Markdown comment on the ticket's timeline (a `comment` event); @mentions resolve to principals the caller can see, item keys are recorded as links | work | `POST /items/{key}/comments` |
+| `bulk_update` | status, priority, tier, assignee, release, labels (add/remove) and dependsOn (add/remove) on up to 200 tickets, each written with the ETag you read; a stale ETag fails only that ticket and is reported; one event per ticket names the batch | work | `POST /items/bulk` |
+| `import_items` | import another tracker's export into one domain (`format`: jira-json, jira-csv, ado-csv, planner-xlsx as base64, merryn-json); `dryRun` (the default) returns the field mapping and what would be created; source keys are kept as the external reference, so a re-import skips them | work | `POST /items/import` |
+| `list_my_work` | the caller's assigned, checked-out, watched and @mentioned tickets (`project` narrows it) | read | `GET /my-work` |
+
+`create_item`'s `template` names a kind (task, feature, question, request, note): every field the call leaves out
+(body, acceptanceCriteria, tier, priority, labels, a question's options, a request's level) comes from the project's
+template for that kind, and the kind defaults to it; a field the call names wins, even when empty. A project with no
+saved templates uses generic defaults. The templates themselves are REST only: `GET /templates` (read) and
+`PATCH /templates` with `If-Match` (admin; a kind set to null returns to its default).
 
 ### Checkout (leases)
 | tool | purpose | scope | REST |
@@ -91,9 +117,9 @@ One line each: what it does · scope · REST twin (relative to `/api/v1`).
 | `get_decision` | one decision or answered question, its citations and its supersededBy chain | read | `GET /decisions/{key}` |
 | `list_decisions` | decisions and answered questions (domain, category, since, q) | read | `GET /decisions` |
 
-`create_item` binds more fields than its advertised MCP schema lists: `question` (a question's text), `for`
-and `level` (a request's consumer and the seam's level) and `blockedReason` are accepted on create, by MCP and
-by `POST /items` alike. Pass every field the item needs in the one `create_item` call. Only if the client
+`create_item` binds more fields than an older instance's advertised MCP schema lists: `question` (a question's
+text), `for` and `level` (a request's consumer and the seam's level) and `blockedReason` are accepted on create, by
+MCP and by `POST /items` alike. Pass every field the item needs in the one `create_item` call. Only if the client
 refuses a field outside the advertised schema, create without it and set it with one `update_item`. That
 works for every field except on a question: its `question`, `title`, `options`, `blocks` and `status` belong to
 the desk, so patching them needs the `admin` scope (a work token gets `forbidden`). File a question with
@@ -127,7 +153,14 @@ everything in the one `create_item` call, or with `release {outcome:"blocked", q
 | `route_item` | evaluate one item against its domain's routing policy; read-only, claims nothing | read | `POST /items/{key}/route` |
 
 ## REST only
-`GET /me`, `GET /ping`, `GET /tickets` and `GET /tickets/{key}` (the ticket table), `GET /docs` and
-`GET /docs/{id}` (submitted docs), `GET /knowledge/status` (read). Admin: the token registry (`/agents`), import,
+`GET /me`, `GET /ping`, `GET /tickets` and `GET /tickets/{key}` (the ticket table: filters, `sort`, `dir` and
+`groupBy` = domain, status, assignee, tier or release), `GET /tickets/export?format=csv|json` (the table's filter,
+unpaged), `POST /items/{key}/watch` (work), `GET /docs` and `GET /docs/{id}` (submitted docs), `GET /knowledge/status`
+(read), `GET /templates` (read), `PATCH /templates` (admin), and the caller's own saved Tickets filters:
+`GET /filters`, `POST /filters`, `PATCH /filters/{id}` (`If-Match`) and `DELETE /filters/{id}` (read scope; a filter
+is the principal's own, in one project, and its `url` is the shareable `/tickets?<query>`), and the ticket actions
+(work): `POST /items/{key}/clone`, `POST /items/{key}/convert` (`If-Match`; task, feature or question; converting an
+open question that holds nothing needs answer scope) and the caller's own comment's `PATCH` or
+`DELETE /items/{key}/comments/{id}` within 15 minutes of posting it. Admin: the token registry (`/agents`), import,
 mirror run and conflicts, escalation and routing policy writes, knowledge reindex. A skill in this plugin never
 calls an admin route unless the charter hands it that job.
