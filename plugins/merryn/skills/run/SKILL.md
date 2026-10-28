@@ -114,7 +114,9 @@ One ticket at a time, up to `--max N` (default 3) or until context runs heavy or
      (the instance files the question and links it, so answering it unblocks the ticket).
    - could not start: `outcome:"abandon"` with the reason.
    The note says what landed, test counts per project (0 skipped or it is not verified), review findings
-   fixed and surviving, and decisions made without a question (for the owner's veto).
+   fixed and surviving, and decisions made without a question (for the owner's veto). Every outcome passes
+   `decisions:[<keys>]`, the decision keys the work relied on (the brief's **Knowledge**, or found since), so
+   the instance records the citation; `unknownDecisions` in the answer names a key it does not hold.
 8. Follow-ups you found: `create_item {domain, kind:"task", tier, priority, title, body}`; work outside this
    domain's repositories goes to the domain that owns them, or to the coordinator as the charter says.
 Remove the worktree once its branch is pushed.

@@ -101,7 +101,7 @@ Vocabulary: **project**, **domains** (each with a charter), **tickets** (a featu
 9. **Release.** `done` only when every criterion is met, survived review, and nothing is left to land.
    Usually a PR, merge or publish is still to come: `handoff` with `resumeFrom:"<branch>@<sha>"`, the commits
    and a note (what landed, tests per project, review findings fixed and surviving, decisions made without a
-   question for veto).
+   question for veto). Pass `decisions:[<keys>]` with every outcome: the decision keys the work relied on.
 
 ## Step 4 — NOT READY: file the gaps, do not improvise
 1. Each `missing` seam: one request on the owning domain, `create_item {domain:<owner>, kind:"request",
