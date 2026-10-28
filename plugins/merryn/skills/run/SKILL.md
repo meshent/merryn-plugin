@@ -93,7 +93,9 @@ One ticket at a time, up to `--max N` (default 3) or until context runs heavy or
 4. **Review gate before the commit**, per `_review/README.md`: independent reviewers over the diff, the
    acceptance criteria and the charter (one lens for `impl`, three for `review` tier and for anything touching
    credentials, authorization or money); each finding with a reproduction; fix what is confirmed; two-round
-   cap; what survives is written down.
+   cap; what survives is written down. If you cannot dispatch reviewer subagents (you are yourself a
+   subagent with no tool to start one), say so in the release note, run the lenses yourself and mark the gate
+   "self-reviewed". Never claim an independent review that did not happen.
 5. A decision the ticket does not settle and the code cannot derive is the owner's. Before filing it, check
    the record: `search_knowledge {q, kinds:["decision","answered-question"], domain}`, `why {key}`,
    `get_decision {key}`, `get_escalation_policy {domain}`. A decision in force that settles it (outside every
@@ -124,6 +126,8 @@ Remove the worktree once its branch is pushed.
 - `update_domain {id, etag, fields:{position}}` with two to four lines: what landed, what is next, what a
   person must do (re-read the domain for a fresh `etag` on a 412).
 - `append_event {key:"<domain>:journal", kind:"journal", summary:"<date> /merryn:run <keys> (<model>): …", data:{run:"run", model}}`.
+- When a coordinator dispatched you, keep the reply to at most 15 lines: SHA, test counts, findings one
+  line each, decisions, residuals. The detail is in the release note and the doc.
 - Last line of the reply, exactly one of:
 ```
 NEXT: run <domain> @<model>      # tickets remain for a model; name the model the policy routes them to
