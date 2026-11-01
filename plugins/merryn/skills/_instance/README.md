@@ -7,8 +7,13 @@ and get the same behaviour. `GET /api/openapi.json` is the REST schema.
 
 **Scopes.** `read` sees; `work` pulls, claims, writes items and submits docs; `answer` answers and reopens
 the desk's questions and records the principles the owner approves there, in the token's own project (it can be
-bound to one, unlike admin); `admin` implies it and also changes charters. `tools/list` only shows the tools your token's scopes allow; a call
-without the scope answers `forbidden`.
+bound to one); `admin` implies it and also changes charters. Admin comes in two reaches: on a token bound
+to no project it is **instance admin**; on a token bound to a project it is **project admin**, which administers that
+project only (its charters, policies, templates, skills, runners and dispatch secrets, import, the knowledge reindex
+of its own entries) and answers `403 instance-admin-only` on the routes that act on the whole instance: minting,
+listing and revoking tokens, the connector allowlist, the model catalog, integrations, creating or editing projects,
+the tenant-wide escalation policy, the mirror run and the cross-project link sweep. `tools/list` only shows the tools
+your token's scopes allow; a call without the scope answers `forbidden`.
 
 **Project-bound tokens and links.** A token bound to one project links only inside it: a `parent`, `dependsOn` or
 `blocks` key it adds (`create_item`, `update_item`, `bulk_update`, clone) must name an existing item in its project, and
@@ -78,7 +83,7 @@ One line each: what it does · scope · REST twin (relative to `/api/v1`).
 |---|---|---|---|
 | `list_items` | filtered list (domain, kind, status, tier, repo, q, limit, default 100); each entry is key, domain, kind, status, tier, priority, repo, title and the live lease holder; body, acceptance criteria, `blockedReason`, `blocks`, `dependsOn` and links are omitted (`get_item` each, or use the REST twin) | read | `GET /items?…` (adds owner and leased filters, returns full items, default limit 1000) |
 | `get_item` | one item: body, acceptance criteria, links, ETag and its last 20 events (`get_history` has them all) | read | `GET /items/{key}` (events: `GET /items/{key}/events`) |
-| `create_item` | create a task, feature, question, request, note or decision; also takes `parent`, `labels`, `release`, `dueDate`, `storyPoints`, `assignee` (+`assigneeSoft`), `watchers` and `template` (below) | work | `POST /items` |
+| `create_item` | create a task, feature, question, request, note or decision (a decision created with no `status` is in force, `done`, by the owner's ruling; propose a candidate with `status:"todo"`); also takes `parent`, `labels`, `release`, `dueDate`, `storyPoints`, `assignee` (+`assigneeSoft`), `watchers` and `template` (below) | work | `POST /items` |
 | `update_item` | patch fields with the item's ETag (412 when stale); status never becomes in-progress this way; labels, dueDate (yyyy-MM-dd), storyPoints (0-100) and watchers too, never the assignee (use `assign_item`) | work | `PATCH /items/{key}` with `If-Match` |
 
 ### Authoring and assignment (tickets)
@@ -137,7 +142,7 @@ everything in the one `create_item` call, or with `release {outcome:"blocked", q
 |---|---|---|---|
 | `submit_doc` | submit markdown at a docs-repository path, linked to items; the mirror commits it | work | `POST /docs` |
 | `mirror_status` | the docs still waiting for the mirror (up to 100) | read | `GET /mirror/status` (mirror configuration, last run and commit, last error, conflicts and a pending count; the pending docs themselves: `GET /docs?status=pending&limit=500`) |
-| `append_event` | a journal line on an item (note, commit, status) or on `<domain>:journal` (kind journal) | work | `POST /items/{key}/events` |
+| `append_event` | a journal line on an item (note, commit, status) or on `<domain>:journal` (kind journal). Data keys only the server writes (`approver`, `approvalBackfilled`, `via`, `ticketComment`, `tool`, `comment`, any case) are dropped and named in the answer's `stripped` | work | `POST /items/{key}/events` |
 
 ### Code changes and releases
 | tool | purpose | scope | REST |
@@ -162,5 +167,6 @@ is the principal's own, in one project, and its `url` is the shareable `/tickets
 (work): `POST /items/{key}/clone`, `POST /items/{key}/convert` (`If-Match`; task, feature or question; converting an
 open question that holds nothing needs answer scope) and the caller's own comment's `PATCH` or
 `DELETE /items/{key}/comments/{id}` within 15 minutes of posting it. Admin: the token registry (`/agents`), import,
-mirror run and conflicts, escalation and routing policy writes, knowledge reindex. A skill in this plugin never
+mirror run and conflicts, escalation and routing policy writes, knowledge reindex (a project admin's rebuilds and
+curates its own project's entries only). A skill in this plugin never
 calls an admin route unless the charter hands it that job.

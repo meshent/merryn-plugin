@@ -52,7 +52,20 @@ The domain is the argument. If none was given, `list_domains`, ask which domain,
   bodies, acceptance criteria and links you need (`list_items` omits bodies and `blockedReason`).
 - `list_items {domain, kind:"question", status:"done"}` and `list_decisions {domain}`: answered questions and
   decisions are **authoritative**. Fold each into the queue as a concrete, tiered ticket (or sharpen the
-  ticket it bears on), citing its key.
+  ticket it bears on), citing its key. An answered question that no decision states yet also becomes a
+  **decision candidate**, once. First look for one already filed from it: `list_items {domain, kind:"decision",
+  q:"<question key>"}` and `list_items {domain, kind:"note", q:"<question key>"}` (any status: a candidate the
+  owner rejected is superseded, and is never filed again). None:
+  `create_item {domain, kind:"decision", category:"ruling", status:"todo", title, statement:"<the answer as a
+  standing ruling>", body:"From <question key>, answered by <who>. Candidate: not in force until the owner
+  accepts it."}`. Created `todo`, it is a candidate, not a decision in force: the desk (`desk_evaluate`, `/merryn:answer --auto`), `list_decisions` and
+  `answer_question`'s `decidedBy` ignore it until the owner rules. Name it in the handoff with how to rule: the
+  owner **accepts** it with `update_item {key, etag, fields:{status:"done"}}` (it is then in force, and the
+  instance records who approved it and when) or **vetoes** it with `fields:{status:"superseded"}`; either
+  needs the `answer` scope, not `admin`. Creating a decision needs the `answer` or `admin` scope: when the
+  create is refused with `forbidden` or `project-not-allowed`, file it instead as `create_item {domain,
+  kind:"note", labels:["decision-candidate"], title, body}` with the same text (the owner records it as a
+  decision, or closes the note); if that is refused too, name it in the handoff only.
 - `list_open_questions {domain}`: the tickets they hold wait for the owner. Do not design around a decision
   not yet made.
 - `list_items {domain, kind:"request", status:"todo"}`: seams other domains' features asked this domain for.
@@ -79,10 +92,16 @@ Read enough of the domain's code (the repositories its charter names) to know wh
   is the coordinator's to reconcile: leave it and say so. A ticket blocked on something that has since
   happened goes back to `todo` with a note.
 - A decision the code cannot settle: check the record first (`search_knowledge {q, kinds:["decision",
-  "answered-question"], domain}`, `why {key}`, `get_decision`, `get_escalation_policy {domain}`). A decision in
+  "answered-question","doc"], domain}`, `why {key}`, `get_decision`, `get_escalation_policy {domain}`). A decision in
   force outside every escalation category is applied and cited by key; an answered question on the same
   substance is followed. A question that blocks nothing and only confirms a reading of a decision is never a
-  desk item. Otherwise file it for the owner: `create_item {domain, kind:"question", title, question, body,
+  desk item. Otherwise no decision and no doc answers it. Before filing anything, look for what an earlier round
+  filed on it: `list_open_questions {domain}` for a question on the same substance or holding the same tickets,
+  and `list_items {domain, kind:"note", q:"<ticket key>"}` for its gap note (a note names the tickets it holds).
+  Either exists: add what you learned to it (`append_event {key, kind:"note"}`) and file nothing new. Otherwise
+  file the gap, `create_item {domain, kind:"note", labels:["knowledge-gap"], title:"Knowledge gap: <topic>",
+  body:"<the tickets it holds, by key; the question, the searches you ran and what they returned>"}`, and file
+  the question for the owner: `create_item {domain, kind:"question", title, question, body,
   options:[{n,label,recommended,text}], blocks:[<keys it holds>]}` with your recommendation, in that one call
   (`question` is bound on create although the MCP schema omits it; see `${CLAUDE_PLUGIN_ROOT}/skills/_instance/README.md`); if a decision
   nearly decides it, name that decision's key in the body so `/merryn:answer --auto` can settle it. Never quietly
