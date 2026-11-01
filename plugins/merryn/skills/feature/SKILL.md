@@ -83,6 +83,9 @@ Vocabulary: **project**, **domains** (each with a charter), **tickets** (a featu
 4. Build and test with the repository's own commands; 0 failed, 0 skipped.
 5. **Review gate**, per `${CLAUDE_PLUGIN_ROOT}/skills/_review/README.md`: three lenses (correctness, security,
    spec against every acceptance criterion); a criterion met only on the happy path is a finding. Two-round cap.
+   If you cannot dispatch reviewer subagents (you are yourself a subagent with no tool to start one), say so in
+   the release note, run the lenses yourself and mark the gate "self-reviewed". Never claim an independent
+   review that did not happen.
 6. **A fork the ticket did not settle is the owner's.** Check the record first
    (`search_knowledge {q, kinds:["decision","answered-question"]}`, `why {key}`, `get_decision`,
    `get_escalation_policy`): a decision in force outside every escalation category is followed and cited by key;

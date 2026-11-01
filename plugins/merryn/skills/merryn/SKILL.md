@@ -39,6 +39,27 @@ that skill instead of this file. The long forms (`/merryn:answer --server <name>
 work, but never ask the person to type them: `/merryn answer mira --assist` is the form to show. A word in
 a project or verb position that is neither a connected project nor a verb is an error: list both and stop.
 
+## Context budget (a long-running coordinator)
+The loop is meant to run unattended for days in one session, and it survives by compaction. Every tool
+result stays in your context until the next compaction, so the cost is mostly payload, not reasoning. Keep
+each stretch between compactions long:
+- **Delegate the landing.** Step 4's mechanics (combined tree, suite, PR, reviewer, fix rounds, merge-tree
+  re-check) run in one landing agent per item. You keep the landing lease and the merge decision, and you
+  read only its short report.
+- **Short reports, durable detail.** Every brief (lane, fix lane, reviewer, landing agent) caps its final
+  report at 15 lines: SHA, counts (tests/pass/fail/skipped), verdict, findings one line each, decisions,
+  residuals. The full detail goes in the item's release note, the decision doc and the PR, where it is
+  durable; the chat copy is not.
+- **Never print a large payload.** Save `get_domain`, `get_item` and long listings to a file and extract the
+  field you need (an `etag`, a lease). Tests print only their summary lines (`# tests|pass|fail|cancelled|skipped`).
+  Read a lane's partial output only when it looks dead.
+- **The banner is current state only.** Keep the position under about 400 words: in progress, landing,
+  waiting on the owner, next. History moves to `<domain>:journal` and the items. Every `claim` and
+  `get_domain` echoes it back, to every session.
+- **Wake on events, check in rarely.** Lane hand-backs and background runs already wake you. A timed
+  check-in is a safety net for a lease that must be heartbeated: about every 60–90 minutes, never a
+  short poll.
+
 ## Step 0 — bind to the instance
 - **The connector.** `[project]` (the project word, right after the verb or first, as *Reading the command* says) or `--server <name>` picks the
   Merryn connector; resolve it as `${CLAUDE_PLUGIN_ROOT}/skills/_instance/README.md` › *Choosing the connector*
@@ -147,6 +168,8 @@ lease you pulled. Brief every lane with, verbatim:
   spec-versus-acceptance-criteria), each finding with a reproduction; fix confirmed findings; one round-2
   reviewer on the fixes; **two-round cap**. Findings that survive the cap are written down, not hidden.
 - `submit_doc` a decision doc (`## Intent`, `## Usage`) linked to the item.
+- The final report to the coordinator is at most 15 lines (see *Context budget*); the detail goes in the
+  release note and the decision doc.
 - Release `done` only when the coordinator has nothing left to land: every acceptance criterion met with no
   PR, review, merge, publish or deploy still to come. Otherwise (the usual case) release `handoff` with
   `resumeFrom <branch>@<sha>`, the pushed commits, and a note (what landed, test counts per project, review
@@ -165,7 +188,8 @@ while its PR is still landing. Close that gap at once:
    with that label (an unlabelled claim competes with every lease your token holds and fails
    `already-holding`). Heartbeat with the same label every 15 minutes through steps 1–7. If the claim answers
    `lease-held`, someone pulled it in between: stop and reconcile with `list_active` before doing anything.
-Then, under that lease:
+Then, under that lease (steps 1–3 and 7 run in a landing agent you dispatch with this list, a 15-line
+report cap and the landing label to heartbeat; the merge in step 4 stays yours):
 1. Fetch the branch; run the repository's tests on a clean checkout yourself (0 skipped); grep for anything
    the charter forbids in the core (tenant names, person names, hash routing, floating package versions).
 2. Open the PR from the lane's branch into the lane's base (`release` where a release train publishes, else the
@@ -173,7 +197,9 @@ Then, under that lease:
    the decisions for veto. Stack it on the right base when branches depend on each other.
 3. **Independent review before merge.** Dispatch one reviewer agent per PR with a verification brief (build,
    tests, security surface, charter, merge-tree against the base); it posts a *comment* review (a formal
-   approval is refused for the author's own account) ending with `MERGE` or `DO NOT MERGE`.
+   approval is refused for the author's own account) ending with `MERGE` or `DO NOT MERGE`. When the lane
+   reports its gate "self-reviewed", this reviewer is the only real gate: its brief includes re-running the
+   lane's mutant and fail-first table, not just reading it.
 4. Merge on `MERGE` only when the charter (or the owner, in writing on the item or the desk) lets the
    coordinator merge. When the PR must wait for the owner (`--no-merge`, the charter reserves merges, a PR
    you authored, or a `DO NOT MERGE` that needs a decision), `release {key, session, outcome:"blocked",
@@ -204,7 +230,8 @@ Then, under that lease:
 8. Carry the reviewers' non-blocking findings to the item as a note; they are the next round's input.
 
 ## Step 5 — the cycle
-After every round: `update_domain` the position banner (done / in progress / blocked-on-owner / next) and
+After every round: `update_domain` the position banner (in progress / landing / blocked-on-owner / next;
+current state only, history to the journal) and
 `append_event <domain>:journal`. Then go back to Step 1: answering a question or finishing an item makes
 other items pullable. Stop dispatching only when `pull_work` returns nothing for every kind and every
 domain in scope, or when the close-out reserve below says so.
