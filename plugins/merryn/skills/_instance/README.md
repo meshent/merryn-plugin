@@ -142,7 +142,7 @@ everything in the one `create_item` call, or with `release {outcome:"blocked", q
 |---|---|---|---|
 | `submit_doc` | submit markdown at a docs-repository path, linked to items; the mirror commits it | work | `POST /docs` |
 | `mirror_status` | the docs still waiting for the mirror (up to 100) | read | `GET /mirror/status` (mirror configuration, last run and commit, last error, conflicts and a pending count; the pending docs themselves: `GET /docs?status=pending&limit=500`) |
-| `append_event` | a journal line on an item (note, commit, status) or on `<domain>:journal` (kind journal) | work | `POST /items/{key}/events` |
+| `append_event` | a journal line on an item (note, commit, status) or on `<domain>:journal` (kind journal). Data keys only the server writes (`approver`, `approvalBackfilled`, `via`, `ticketComment`, `tool`, `comment`, any case) are dropped and named in the answer's `stripped` | work | `POST /items/{key}/events` |
 
 ### Code changes and releases
 | tool | purpose | scope | REST |

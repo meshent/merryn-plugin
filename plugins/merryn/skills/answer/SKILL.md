@@ -109,8 +109,9 @@ For a long or jargon-heavy desk the owner would rather answer as a handful of pr
    answer here because the per-question mapping is in front of them. Silence is not approval. Record nothing
    until they reply.
 6. **Record** on approval: a principle approved in this run that is not yet on the instance is created first
-   (`create_item {domain, kind:"decision", category:"principle", statement, title, approvedBy, approvedAt}`)
-   so answers can cite it. Then `answer_question` for each question with the brief's text (adjusted for what
+   (`create_item {domain, kind:"decision", category:"principle", statement, title}`) so answers can cite it. Do
+   not send `approvedBy` or `approvedAt`: the server stamps them with the caller and today (a non-admin cannot name
+   another approver). Then `answer_question` for each question with the brief's text (adjusted for what
    the owner changed) and the provenance as fields: `mode` (`principle`, `rule`, `filed` or `human`),
    `decidedBy` (the decision key; required for principle and rule), `deviates`, `recordedBy:"answer --assist (<model>)"`.
 7. **Report and persist**: `submit_doc` the report to `outputs/desk/reports/<the brief's stem>.md`, and
