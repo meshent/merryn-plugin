@@ -9,10 +9,10 @@ and get the same behaviour. `GET /api/openapi.json` is the REST schema.
 the desk's questions and records the principles the owner approves there, in the token's own project (it can be
 bound to one); `admin` implies it and also changes charters. Admin comes in two reaches: on a token bound
 to no project it is **instance admin**; on a token bound to a project it is **project admin**, which administers that
-project only (its charters, policies, templates, skills, runners and dispatch secrets, import, the knowledge reindex
-of its own entries) and answers `403 instance-admin-only` on the routes that act on the whole instance: minting,
+project only (its charters, policies, templates, skills, runners and dispatch secrets, import, the knowledge reindex,
+import and listing of its own entries, and the link sweep over its own items) and answers `403 instance-admin-only` on the routes that act on the whole instance: minting,
 listing and revoking tokens, the connector allowlist, the model catalog, integrations, creating or editing projects,
-the tenant-wide escalation policy, the mirror run and the cross-project link sweep. `tools/list` only shows the tools
+the tenant-wide escalation policy and the mirror run. `tools/list` only shows the tools
 your token's scopes allow; a call without the scope answers `forbidden`.
 
 **Project-bound tokens and links.** A token bound to one project links only inside it: a `parent`, `dependsOn` or
@@ -168,5 +168,8 @@ is the principal's own, in one project, and its `url` is the shareable `/tickets
 open question that holds nothing needs answer scope) and the caller's own comment's `PATCH` or
 `DELETE /items/{key}/comments/{id}` within 15 minutes of posting it. Admin: the token registry (`/agents`), import,
 mirror run and conflicts, escalation and routing policy writes, knowledge reindex (a project admin's rebuilds and
-curates its own project's entries only). A skill in this plugin never
+curates its own project's entries only), knowledge entries (`POST /admin/knowledge/entries` imports and the paged
+`GET /admin/knowledge/entries` lists, both within the caller's read scope; a restricted caller's import reports the
+links it refused under `dropped`) and the link sweep (`GET /admin/links`, `POST /admin/links/clean`; a project admin's
+covers its own project only, with links into other projects masked). A skill in this plugin never
 calls an admin route unless the charter hands it that job.
