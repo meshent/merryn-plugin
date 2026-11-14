@@ -94,8 +94,8 @@ runs: leases, the desk's escalation rules, the review gate and the *Invariants* 
 - **Merge on the structured verdict only.** For each `coordinator_status` › `awaitingMerge` row with
   `verdict:"MERGE"`: check the PR's current head SHA equals the row's `headSha` (a push after the review means
   the verdict is stale: spawn a new landing instead), that the charter lets the coordinator merge (else the
-  close-out batch, as Step 4.4 says), then merge and continue Step 4 from publish and verify under a landing
-  lease (`claim` after clearing the block, as *Items awaiting a merge* says). `DO_NOT_MERGE` past the landing's
+  close-out batch, as Step 4.4 says), then merge it and resume it as *Items awaiting a merge* says for a merged
+  PR (clear the block, `claim` under a landing label, carry on with Step 4 after the merge). `DO_NOT_MERGE` past the landing's
   two-round cap goes to the close-out batch with its findings.
 - **Deconflict.** At most N siblings live (lanes and landings together). Two siblings share a repository only
   when their items' files are known and disjoint; name the other live siblings' files in `--off-limits`. A
