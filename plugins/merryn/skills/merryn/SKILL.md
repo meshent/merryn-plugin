@@ -1,6 +1,6 @@
 ---
 name: merryn
-description: "Merryn from one command. Usage /merryn [verb] [project] [flags]; the project is optional and may also come first (/merryn [project] [verb]). Bare /merryn, or the loop verb (/merryn loop, /merryn loop mira, qualified /merryn:loop mira), starts the backlog loop (pull, dispatch lanes, review, merge, publish, deploy, close out; repeat until the queue is dry). Verbs: loop, answer [--assist|--auto], status, pause, stop, run <domain>, groom <domain>, feature [key]. The project is inferred when one Merryn connector is attached or the session names it, and asked for otherwise. Loop flags: --domain <id>..., --items <key>..., --rounds N, --dry-run, --no-merge."
+description: "Merryn from one command. Usage /merryn [verb] [project] [flags]; the project is optional and may also come first (/merryn [project] [verb]). Bare /merryn, or the loop verb (/merryn loop, /merryn loop mira, qualified /merryn:loop mira), starts the backlog loop (pull, dispatch lanes, review, merge, publish, deploy, close out; repeat until the queue is dry). Verbs: loop, answer [--assist|--auto], status, pause, stop, run <domain>, groom <domain>, feature [key], lane <domain>, landing <key>. The project is inferred when one Merryn connector is attached or the session names it, and asked for otherwise. Loop flags: --domain <id>..., --items <key>..., --rounds N, --dry-run, --no-merge, --siblings N (fan-out: every lane and landing in its own sibling session)."
 ---
 
 You are the **coordinator** for one Merryn instance. You run the loop the platform was built for: agents
@@ -33,6 +33,8 @@ decisions and its knowledge index. Nothing tenant-specific is written in this fi
 | `run <domain>` | `/merryn:run <domain>` |
 | `groom <domain>` | `/merryn:groom <domain>` |
 | `feature [key]` | `/merryn:feature [key]` |
+| `lane <domain>` | `/merryn:lane <domain>`: a fan-out sibling working one item (see *Fan-out mode*) |
+| `landing <key>` | `/merryn:landing <key>`: a fan-out sibling landing one handed-off item |
 
 Hand the resolved connector (`--server <name>`) and the rest of the flags to the skill a verb names, and follow
 that skill instead of this file. The long forms (`/merryn:answer --server <name> --assist` and the like) still
@@ -59,6 +61,53 @@ each stretch between compactions long:
 - **Wake on events, check in rarely.** Lane hand-backs and background runs already wake you. A timed
   check-in is a safety net for a lease that must be heartbeated: about every 60–90 minutes, never a
   short poll.
+- **Read compactly.** `coordinator_status` is the per-wake read (leases, handoffs, PRs awaiting merge with their
+  verdicts, the desk's count, pullable per domain). When a step needs one field, ask for it:
+  `get_domain {id, fields:["charter","position"], journal:0}`, `get_item {key, fields:["status","landing"], events:0}`,
+  `list_items {status:"blocked", blockedReasonPrefix:"awaiting merge of", fields:["blockedReason","landing"]}`.
+  An instance that ignores `fields` answers in full: save that to a file and extract, as above.
+
+## Fan-out mode (`--siblings N`)
+When the harness can spawn sibling sessions (Claude Code on the web's `create_session`; the instance's
+instructions say so when the client advertises it), `/merryn loop [project] --siblings N` runs every lane and
+every landing as its own sibling session in its own container, and the coordinator stays thin. N is the most
+siblings live at once; without `--siblings` the project's default applies (`coordinator_status` ›
+`fanOutSiblings`, set by an admin with `PATCH /projects/{id}` `fanOutSiblings`); with neither, or a harness that
+cannot spawn sessions, the loop runs as the rest of this file says. Fan-out changes only **where** the work
+runs: leases, the desk's escalation rules, the review gate and the *Invariants* hold exactly as written.
+- **What the coordinator still does, and only this:** the desk (Step 1: answers that decisions in force already
+  settle; everything else waits for the owner), `coordinator_status` on each wake, spawning siblings, merging on
+  a structured `MERGE` verdict, the banner update (Step 5) and the close-out batch (Step 6). It does not run
+  Step 3 or Step 4's mechanics itself, and never reads a whole domain or item unless a step needs a field.
+- **A lane is a sibling.** For each pullable domain (`coordinator_status` › `pullable`), spawn a session with a
+  few-line prompt: "Run `/merryn:lane <domain> --repo <repo> --session <label> --branch wip/<label>
+  --off-limits <files>`; `--server <name>`; your externalSession is your session id." (Without the plugin there:
+  "call `get_skill {id:"lane"}` and follow it".) The lane pulls its own item; the coordinator does not pull for it.
+- **A landing is a sibling.** For each `coordinator_status` › `handoffs` row, spawn a fresh session (never the
+  lane's): "Run `/merryn:landing <key> --repo <repo> --branch <branch from resumeFrom> --base <base>
+  --session <run>-land-<key>`." It claims, opens the PR, gets an independent review and releases `blocked`
+  `awaiting merge of <PR URL>` with the structured `landing` object; it never merges.
+- **Tag and record every sibling.** Give each spawned session a title or tag naming its label and item, and keep
+  the map from label to the session id `create_session` returned. Siblings pass their session id as
+  `externalSession` on `check_in`, `pull_work` and `claim`, so `coordinator_status` › `leases` shows which
+  sibling holds what.
+- **Merge on the structured verdict only.** For each `coordinator_status` › `awaitingMerge` row with
+  `verdict:"MERGE"`: check the PR's current head SHA equals the row's `headSha` (a push after the review means
+  the verdict is stale: spawn a new landing instead), that the charter lets the coordinator merge (else the
+  close-out batch, as Step 4.4 says), then merge and continue Step 4 from publish and verify under a landing
+  lease (`claim` after clearing the block, as *Items awaiting a merge* says). `DO_NOT_MERGE` past the landing's
+  two-round cap goes to the close-out batch with its findings.
+- **Deconflict.** At most N siblings live (lanes and landings together). Two siblings share a repository only
+  when their items' files are known and disjoint; name the other live siblings' files in `--off-limits`. A
+  repository whose policy is exclusive gets one sibling at a time.
+- **Wake on events, not timers.** Subscribe once per run: `watch_url` (the harness) gives a URL and a sealed
+  secret; `subscribe_events {url, sealedSecret, kinds:["lease-released","lease-expired","question-answered",
+  "change-merged"]}` makes the instance POST to it. Each delivery wakes you; read `coordinator_status` and act.
+  Keep one long fallback timer (30–60 minutes) for a lost delivery; never poll in short intervals. On resume,
+  `watch_url` again and re-subscribe (`unsubscribe_events` the old id). A `lease-expired` event is a dead sibling:
+  rescue it as Step 3 says (`handoff` from its last pushed SHA) and spawn a new one.
+- **Siblings report in 15 lines** (their skills say so); their detail lives in the release note, the decision
+  doc and the PR. Read a sibling's transcript only when it looks dead.
 
 ## Step 0 — bind to the instance
 - **The connector.** `[project]` (the project word, right after the verb or first, as *Reading the command* says) or `--server <name>` picks the
@@ -121,8 +170,10 @@ Open questions hold items. For each `list_open_questions` result:
 In `--dry-run`, print the answer or escalation each question would get and call none of the write tools.
 
 **Items awaiting a merge.** Find the blocked items whose `blockedReason` is `awaiting merge of <PR URL>`
-(Step 4). MCP `list_items {status:"blocked"}` omits `blockedReason`, so `get_item` each item it lists (or use
-the REST twin `GET /items?status=blocked`, which returns full items). Check each PR's state
+(Step 4): `coordinator_status` › `awaitingMerge` lists them with the PR URL and the structured verdict, or
+`list_items {status:"blocked", blockedReasonPrefix:"awaiting merge of", fields:["blockedReason","landing"]}`.
+An older instance's `list_items` omits `blockedReason`: `get_item` each item it lists there (or use the REST twin
+`GET /items?status=blocked`, which returns full items). Check each PR's state
 (`list_changes {key}`, or `gh pr view <PR URL> --json state,mergedAt`):
 - **Merged:** resume landing it. Clear the block (`update_item {key, etag, fields:{status:"todo",
   blockedReason:null}}`; a blocked item cannot be claimed), claim it at once under its landing label

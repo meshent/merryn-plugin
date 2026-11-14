@@ -56,6 +56,8 @@ plugins/merryn/
   skills/feature/SKILL.md           /merryn:feature, cross-cutting features
   skills/groom/SKILL.md             /merryn:groom, keep a domain's queue true
   skills/answer/SKILL.md            /merryn:answer, the desk
+  skills/lane/SKILL.md              /merryn:lane, a fan-out sibling working one item
+  skills/landing/SKILL.md           /merryn:landing, a fan-out sibling landing one handed-off item
   skills/_instance/README.md        every tool an instance serves, with its REST twin
   skills/_review/README.md          the review gate
   skills/_docs/README.md            the decision-doc contract
@@ -64,6 +66,7 @@ plugins/merryn/
 scripts/check.py                    the checks CI runs (manifests, skills, secrets, tenant names)
 scripts/test-hook.js                the hook's tests against a fake instance on localhost
 scripts/test-check.py               mutation tests for check.py's gates
+CHANGELOG.md                        what each plugin version changed
 ```
 
 ## The session check-in
