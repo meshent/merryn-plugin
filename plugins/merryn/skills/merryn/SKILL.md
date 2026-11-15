@@ -83,29 +83,43 @@ runs: leases, the desk's escalation rules, the review gate and the *Invariants* 
   few-line prompt: "Run `/merryn:lane <domain> --repo <repo> --session <label> --branch wip/<label>
   --off-limits <files>`; `--server <name>`; your externalSession is your session id." (Without the plugin there:
   "call `get_skill {id:"lane"}` and follow it".) The lane pulls its own item; the coordinator does not pull for it.
-- **A landing is a sibling.** For each `coordinator_status` › `handoffs` row, spawn a fresh session (never the
-  lane's): "Run `/merryn:landing <key> --repo <repo> --branch <branch from resumeFrom> --base <base>
-  --session <run>-land-<key>`." It claims, opens the PR, gets an independent review and releases `blocked`
-  `awaiting merge of <PR URL>` with the structured `landing` object; it never merges.
+- **A landing is a sibling, under a lease you take first.** A `handoff` leaves the item `todo` with no lease, so a
+  lane sibling's `pull_work` could take it again. As Step 4.0 says, for each `coordinator_status` › `handoffs` row
+  `claim {key, session:"<run>-land-<key>"}` at once (`lease-held`: someone took it; reconcile with `list_active`),
+  then spawn a fresh session (never the lane's) under that label: "Run `/merryn:landing <key> --repo <repo>
+  --branch <branch from resumeFrom> --base <base> --session <run>-land-<key>`; `--server <name>`; your
+  externalSession is your session id." It finds the lease held under its label, heartbeats it, opens the PR, gets
+  an independent review and releases `blocked` `awaiting merge of <PR URL>` with the structured `landing` object;
+  it never merges. A row whose landing released `blocked` on a merge conflict goes to the close-out batch (or a
+  lane sibling told to merge BASE into the branch), never to another landing.
 - **Tag and record every sibling.** Give each spawned session a title or tag naming its label and item, and keep
   the map from label to the session id `create_session` returned. Siblings pass their session id as
   `externalSession` on `check_in`, `pull_work` and `claim`, so `coordinator_status` › `leases` shows which
   sibling holds what.
-- **Merge on the structured verdict only.** For each `coordinator_status` › `awaitingMerge` row with
-  `verdict:"MERGE"`: check the PR's current head SHA equals the row's `headSha` (a push after the review means
-  the verdict is stale: spawn a new landing instead), that the charter lets the coordinator merge (else the
-  close-out batch, as Step 4.4 says), then merge it and resume it as *Items awaiting a merge* says for a merged
-  PR (clear the block, `claim` under a landing label, carry on with Step 4 after the merge). `DO_NOT_MERGE` past the landing's
-  two-round cap goes to the close-out batch with its findings.
+- **Merge on the structured verdict only, under a lease.** For each `coordinator_status` › `awaitingMerge` row
+  with `verdict:"MERGE"`, when the run is not `--no-merge` and the charter lets the coordinator merge (otherwise
+  the close-out batch, as Step 4.4 says): clear the block (`update_item` status `todo`, `blockedReason` null,
+  with its etag) and `claim {key, session:"<run>-land-<key>"}` first (`lease-held`: stop and reconcile); then
+  check the PR's current head SHA equals the row's `headSha` (a push after the review means the verdict is
+  stale: release `blocked` again and spawn a new landing under a fresh claim) and merge. Carry on with Step 4
+  (publish, verify, close out) under that lease. `DO_NOT_MERGE` past the landing's two-round cap goes to the
+  close-out batch with its findings.
 - **Deconflict.** At most N siblings live (lanes and landings together). Two siblings share a repository only
   when their items' files are known and disjoint; name the other live siblings' files in `--off-limits`. A
   repository whose policy is exclusive gets one sibling at a time.
-- **Wake on events, not timers.** Subscribe once per run: `watch_url` (the harness) gives a URL and a sealed
-  secret; `subscribe_events {url, sealedSecret, kinds:["lease-released","lease-expired","question-answered",
-  "change-merged"]}` makes the instance POST to it. Each delivery wakes you; read `coordinator_status` and act.
-  Keep one long fallback timer (30–60 minutes) for a lost delivery; never poll in short intervals. On resume,
-  `watch_url` again and re-subscribe (`unsubscribe_events` the old id). A `lease-expired` event is a dead sibling:
-  rescue it as Step 3 says (`handoff` from its last pushed SHA) and spawn a new one.
+- **Wake on events, not timers.** Siblings finishing wake you where the harness reports them. For the instance's
+  own events, `subscribe_events {url, kinds:["lease-released","lease-expired","question-answered",
+  "change-merged"]}` with a receiver that verifies the instance's HMAC: leave `sealedSecret` out and hand the
+  generated `secret` (answered once) to that receiver, or pass one the receiver already knows in plain form. A
+  secret sealed to some other service (Claude Code's `watch_url` seals its secret to the artifact service) cannot
+  be used: the instance would sign with the sealed text and no delivery would verify, so do not pair them. Keep
+  one fallback timer for a lost delivery: 30–60 minutes with a subscription, 15–20 without one; never poll in
+  short intervals. On resume, re-subscribe (`unsubscribe_events` the old id).
+- **A dead sibling** (`lease-expired`, or a sibling quiet 50 minutes past its last heartbeat): its container is
+  out of your reach, but a lane pushes after every lettered step, so its branch is the record. Spawn a new lane
+  sibling with `--item <key> --branch <the dead lane's branch>`: the expired lease is taken over by its claim and
+  it carries on from the last pushed commit. A dead landing: re-claim under the landing label and spawn a new
+  landing.
 - **Siblings report in 15 lines** (their skills say so); their detail lives in the release note, the decision
   doc and the PR. Read a sibling's transcript only when it looks dead.
 

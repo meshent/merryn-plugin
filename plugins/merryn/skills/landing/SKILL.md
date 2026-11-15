@@ -16,12 +16,17 @@ harness's session id, when known) passed as `externalSession` on `check_in` and 
 
 ## Steps
 1. **Bind and toolchain** as `${CLAUDE_PLUGIN_ROOT}/skills/lane/SKILL.md` steps 1 and 2 say.
-2. **Lease.** `get_item {key:KEY, fields:["status","blockedReason","resumeFrom"], events:0}`: it must be `todo` with no
-   live lease (a `blocked` one: `update_item` status `todo`, `blockedReason` null, with its etag). Then
-   `claim {key:KEY, session:LABEL, externalSession:EXTERNAL}`; `lease-held` means someone else holds it: final message
-   `HELD` and stop. Heartbeat LABEL every 15 minutes until you release.
+2. **Lease.** The coordinator claims KEY under LABEL before spawning you. `get_item {key:KEY,
+   fields:["status","lease","blockedReason","resumeFrom"], events:0}`:
+   - a live lease whose session is LABEL is yours: carry on (`heartbeat` it now);
+   - a live lease under any other session: final message `HELD` and stop;
+   - no live lease (the coordinator could not claim first): `claim {key:KEY, session:LABEL,
+     externalSession:EXTERNAL}`; `lease-held` means someone else took it: `HELD`, stop.
+   Heartbeat LABEL every 15 minutes until you release.
 3. **Verify.** Fetch BRANCH and BASE and check they share history (`git merge-base`). Build the merge preview in its
-   own worktree: BASE + BRANCH, conflict-free or stop and release `handoff` naming the conflict. Full build (warnings
+   own worktree: BASE + BRANCH, conflict-free; on a conflict, stop and `release {key:KEY, session:LABEL, outcome:"blocked",
+   blockedReason:"merge conflict with BASE: <files>", note}` (resumeFrom stays as the lane left it; a blocked item
+   is never pulled, and the coordinator sends it to a lane or the owner, not to another landing). Full build (warnings
    as the charter says) and the full test suites, `0 skipped`. Grep the diff for what the charter forbids: floating
    versions, `Version*`/`PackageVersion` edits, credentials, tenant or person names in a platform core package.
 4. **PR.** `open_change {repo:REPO, head:BRANCH, base:BASE, title, body, items:[KEY]}` (falls back to the git host's
