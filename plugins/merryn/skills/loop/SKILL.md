@@ -1,6 +1,6 @@
 ---
 name: loop
-description: "The backlog loop under its qualified name. Usage /merryn:loop [project] [flags], the same as /merryn loop [project] (and the accepted /merryn [project] loop); the project is optional when one Merryn connector is attached. Hands off to the merryn skill's loop; flags as there: --domain <id>..., --items <key>..., --rounds N, --dry-run, --no-merge, --server <name>, --project <id>."
+description: "The backlog loop under its qualified name. Usage /merryn:loop [project] [flags], the same as /merryn loop [project] (and the accepted /merryn [project] loop); the project is optional when one Merryn connector is attached. Hands off to the merryn skill's loop; flags as there: --domain <id>..., --items <key>..., --rounds N, --dry-run, --no-merge, --siblings N, --server <name>, --project <id>."
 ---
 
 This is a name, not a second loop. `/merryn:loop [project] [flags]` is exactly `/merryn loop [project] [flags]`.

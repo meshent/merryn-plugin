@@ -68,21 +68,29 @@ One line each: what it does · scope · REST twin (relative to `/api/v1`).
 ### Session
 | tool | purpose | scope | REST |
 |---|---|---|---|
-| `initialize` (MCP method, not a tool) | handshake; its `instructions` carry the working loop, which wins over any skill text | any valid token | none (`GET /me`, read scope, says who the token is) |
+| `initialize` (MCP method, not a tool) | handshake; its `instructions` carry the working loop, which wins over any skill text; a client whose `capabilities` advertise `create_session` (or `sibling-sessions`) is also told about the fan-out mode | any valid token | none (`GET /me`, read scope, says who the token is) |
+| `check_in` | tell the instance about this session (harness, model, effort, device, cwd, repo, `canDispatch`); `externalSession` records the harness's own session id beside a lane label; `canDispatch` containing `sibling-sessions` (or `create_session`) adds the fan-out guidance and `fanOut:true` to the answer | work | `POST /sessions/check-in` |
+
+### Fan-out (a coordinator running siblings)
+| tool | purpose | scope | REST |
+|---|---|---|---|
+| `coordinator_status` | the coordinator's per-wake digest, compact rows only: `leases` {key, session, externalSession, branch, heartbeatAt, expiresAt}; `handoffs` awaiting landing (todo, `resumeFrom` set, no lease) {key, repo, resumeFrom}; `awaitingMerge` {key, prUrl, verdict, headSha, tests passed/failed/skipped}; `questions` {open, escalated keys}; `pullable` per domain (the `pull_work` rule, read-only, before repo and file-scope checks); `fanOutSiblings` (the project's default). Each list is `{count, rows (at most 20), more}`; about 300 open items fit in under 4 KB | read | `GET /coordinator/status?project=…` |
+| `subscribe_events` | push instead of poll: POST a signed JSON event to `url` (https, a host that resolves only to public addresses, checked at connect; no redirects followed) for `kinds` lease-released, lease-expired, question-answered, change-merged in the project (a change linking several projects reaches each, naming only its own keys); `X-Merryn-Signature: sha256=hex(HMAC-SHA256(secret, X-Merryn-Timestamp + "." + body))` and `X-Hub-Signature-256: sha256=hex(HMAC-SHA256(secret, body))`; `sealedSecret` is the HMAC key as given (16-4096 characters, never echoed; a secret sealed to another service will not verify), else the answer carries a generated one once; `ttlHours` default 24, max 168; at most 20 per project; delivered at least once, best effort (two attempts) | work | `POST /events/subscriptions` |
+| `unsubscribe_events` | remove a subscription by `id` (yours, or any with admin); another project's or principal's id reads `not-found` | work | `DELETE /events/subscriptions/{id}?project=…` |
 
 ### Domains (the project's charters)
 | tool | purpose | scope | REST |
 |---|---|---|---|
 | `list_projects` | the projects on this instance, home first, with each one's domain ids | read | `GET /projects` |
 | `list_domains` | every domain with its project, position banner and repo policy (`project` narrows it) | read | `GET /domains` |
-| `get_domain` | one domain: the binding charter, position banner, repo policy, counts, recent journal, ETag | read | `GET /domains/{id}` |
+| `get_domain` | one domain: the binding charter, position banner, repo policy, counts, recent journal, ETag. Compact: `fields` (domain fields such as `charter`, `position`, `repoPolicy`, `files`, `loop`, `review`, or `counts`, `notes`, `journal`; `id` and `etag` always, unknown names come back in `unknownFields`) and `journal` (lines, 0-50, default 8); with neither, the full answer as before | read | `GET /domains/{id}?fields=…&journal=N` |
 | `update_domain` | patch a domain with its ETag; lanes may change position, flags, lastActivity; every other field (title, repo, repos, charter, charterSummary, repoPolicy, queues) needs admin | work (admin for other fields) | `PATCH /domains/{id}` with `If-Match` |
 
 ### Items (tickets, features, questions, requests, notes, decisions)
 | tool | purpose | scope | REST |
 |---|---|---|---|
-| `list_items` | filtered list (domain, kind, status, tier, repo, q, limit, default 100); each entry is key, domain, kind, status, tier, priority, repo, title and the live lease holder; body, acceptance criteria, `blockedReason`, `blocks`, `dependsOn` and links are omitted (`get_item` each, or use the REST twin) | read | `GET /items?…` (adds owner and leased filters, returns full items, default limit 1000) |
-| `get_item` | one item: body, acceptance criteria, links, ETag and its last 20 events (`get_history` has them all) | read | `GET /items/{key}` (events: `GET /items/{key}/events`) |
+| `list_items` | filtered list (domain, kind, status, tier, repo, q, `blockedReasonPrefix`, limit, default 100); each row is key, domain, kind, status, tier, priority, repo, release, title, the live lease holder (`leased`) and `updatedAt`, plus, when set, `leaseSession`, `externalSession`, `blockedReason` and `resumeFrom` (cut to 240 characters) and the structured `landing`; `q` matches key, title, body and `blockedReason`; `fields` keeps only the named row keys (`key` always); body, acceptance criteria, `blocks`, `dependsOn` and links are omitted (`get_item` each, or use the REST twin) | read | `GET /items?…` (adds owner and leased filters, returns full items, default limit 1000; `blockedReasonPrefix` too, and `fields=…` returns the compact rows instead) |
+| `get_item` | one item: body, acceptance criteria, links, the structured `landing` when one was recorded, ETag and its last 20 events (`get_history` has them all). Compact: `fields` (item fields to keep; `id` and `etag` always; `events` by name) and `events` (0-20, default 20) | read | `GET /items/{key}?fields=…&events=N` (events: `GET /items/{key}/events`) |
 | `create_item` | create a task, feature, question, request, note or decision (a decision created with no `status` is in force, `done`, by the owner's ruling; propose a candidate with `status:"todo"`); also takes `parent`, `labels`, `release`, `dueDate`, `storyPoints`, `assignee` (+`assigneeSoft`), `watchers` and `template` (below) | work | `POST /items` |
 | `update_item` | patch fields with the item's ETag (412 when stale); status never becomes in-progress this way; labels, dueDate (yyyy-MM-dd), storyPoints (0-100) and watchers too, never the assignee (use `assign_item`) | work | `PATCH /items/{key}` with `If-Match` |
 
@@ -105,11 +113,11 @@ saved templates uses generic defaults. The templates themselves are REST only: `
 ### Checkout (leases)
 | tool | purpose | scope | REST |
 |---|---|---|---|
-| `pull_work` | select the next eligible item and claim it in one step; `pulled:false` lists why candidates were skipped | work | `POST /work/pull` |
-| `claim` | take one named item; one live lease per session label (per token without a label) | work | `POST /items/{key}/claim` |
+| `pull_work` | select the next eligible item and claim it in one step; `pulled:false` lists why candidates were skipped; `externalSession` (the harness's own session id) is recorded on the lease | work | `POST /work/pull` |
+| `claim` | take one named item; one live lease per session label (per token without a label); `externalSession` is recorded on the lease (informational: never part of the holder check) | work | `POST /items/{key}/claim` |
 | `heartbeat` | extend your lease by its original TTL; every 15 minutes; `not-holder` means someone else holds it now: stop; `no-lease` means yours lapsed or was released: `claim` again at once unless `get_item` shows someone else released it | work | `POST /items/{key}/heartbeat?session=<label>` (the label is a query parameter) |
-| `release` | end the lease: `done` (+commits), `blocked` (+question), `handoff` (+resumeFrom), `abandon` | work | `POST /items/{key}/release` |
-| `list_active` | every live lease: holder, session, branch, since when (filter by repo, domain) | read | `GET /work/active` |
+| `release` | end the lease: `done` (+commits), `blocked` (+question), `handoff` (+resumeFrom), `abandon`; a landing passes `landing` {prUrl, headSha, baseSha, verdict `MERGE` or `DO_NOT_MERGE`, reviewUrl, tests {passed, failed, skipped}}, stored on the item beside the free-text note (400 `invalid-landing` names what is wrong) | work | `POST /items/{key}/release` |
+| `list_active` | every live lease: holder, session, `externalSession`, branch, since when (filter by repo, domain) | read | `GET /work/active` |
 
 ### The desk (questions and decisions)
 | tool | purpose | scope | REST |
