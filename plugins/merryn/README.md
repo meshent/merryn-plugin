@@ -16,6 +16,7 @@ tenant that needs more layers its own plugin on top of this one instead of forki
 | `skills/feature/SKILL.md` | `/merryn:feature [key]`, cross-cutting features: probe the seams the repositories actually expose, build when they are there, file the gaps when not |
 | `skills/groom/SKILL.md` | `/merryn:groom <domain>`, keep a domain's queue true: close what is done, file gaps, fold answers and requests into tickets, work design tickets inline |
 | `skills/answer/SKILL.md` | `/merryn:answer`, the desk: present open questions with a recommendation, record the owner's answers with provenance (`--assist`, `--auto`) |
+| `skills/env/SKILL.md` | `/merryn:env`, the cloud environment check: is this session's environment the one the bound project's charters ask for (read only); `--init` creates it only when it is missing |
 | `skills/_instance/README.md` | every tool an instance serves over MCP, its scope and its REST twin under `/api/v1` |
 | `skills/_review/README.md` | the review gate: three lenses, reproductions, 0 skipped, the two-round cap, the independent `MERGE` / `DO NOT MERGE` review |
 | `skills/_docs/README.md` | the decision doc: path, front matter, `## Intent` and `## Usage`, delivery through `submit_doc` |
@@ -78,6 +79,7 @@ too. Bare `/merryn`, `/merryn loop mira` and `/merryn:loop mira` all run the bac
 | `run <domain>` | `/merryn:run` | `--item <key>` (work that one ticket), `--session <label>` (a dispatcher's label), `--tier <tier>…` (overrides what the routing policy gives your model), `--max N` (default 3) |
 | `feature [key]` | `/merryn:feature` | `--domain <id>`, `--session <label>`, `--probe-only`, `--dry-run`, `--rounds N` (default 3) |
 | `groom <domain>` | `/merryn:groom` | `--item <key>` (work that one design ticket), `--session <label>` (a dispatcher's label), `--dry-run` |
+| `env` | `/merryn:env`, cloud sessions only: checks the session's repositories belong to the project, reads the *Cloud environment* section of its charters, and reports whether anything is needed; read only | `--init` (on `MISSING` only: propose a personal environment, ask for credentials through the credential form, verify) |
 
 When you call a worker skill directly, use its qualified name, **`/merryn:<skill>`**. The qualified form avoids collisions:
 Claude Code has a built-in `/run`, and another installed plugin may ship its own `feature`, `groom` or

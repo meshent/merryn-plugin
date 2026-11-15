@@ -35,6 +35,7 @@ project first (`/merryn mira loop`) is accepted too:
 /merryn answer mira --assist     the desk distilled into a few principle-level questions
 /merryn status mira              where the project stands; read only
 /merryn run mira <domain>        one domain's tickets (also: groom, feature, pause, stop)
+/merryn env mira                 does this cloud session have the environment mira needs; --init sets it up
 ```
 
 The project picks the Merryn connector. When you leave it out, the skill uses the only Merryn connector
@@ -56,6 +57,7 @@ plugins/merryn/
   skills/feature/SKILL.md           /merryn:feature, cross-cutting features
   skills/groom/SKILL.md             /merryn:groom, keep a domain's queue true
   skills/answer/SKILL.md            /merryn:answer, the desk
+  skills/env/SKILL.md               /merryn:env, the cloud environment check (--init sets it up)
   skills/_instance/README.md        every tool an instance serves, with its REST twin
   skills/_review/README.md          the review gate
   skills/_docs/README.md            the decision-doc contract

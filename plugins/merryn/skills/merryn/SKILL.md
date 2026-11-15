@@ -1,6 +1,6 @@
 ---
 name: merryn
-description: "Merryn from one command. Usage /merryn [verb] [project] [flags]; the project is optional and may also come first (/merryn [project] [verb]). Bare /merryn, or the loop verb (/merryn loop, /merryn loop mira, qualified /merryn:loop mira), starts the backlog loop (pull, dispatch lanes, review, merge, publish, deploy, close out; repeat until the queue is dry). Verbs: loop, answer [--assist|--auto], status, pause, stop, run <domain>, groom <domain>, feature [key]. The project is inferred when one Merryn connector is attached or the session names it, and asked for otherwise. Loop flags: --domain <id>..., --items <key>..., --rounds N, --dry-run, --no-merge."
+description: "Merryn from one command. Usage /merryn [verb] [project] [flags]; the project is optional and may also come first (/merryn [project] [verb]). Bare /merryn, or the loop verb (/merryn loop, /merryn loop mira, qualified /merryn:loop mira), starts the backlog loop (pull, dispatch lanes, review, merge, publish, deploy, close out; repeat until the queue is dry). Verbs: loop, answer [--assist|--auto], status, pause, stop, run <domain>, groom <domain>, feature [key], env [--init]. The project is inferred when one Merryn connector is attached or the session names it, and asked for otherwise. Loop flags: --domain <id>..., --items <key>..., --rounds N, --dry-run, --no-merge."
 ---
 
 You are the **coordinator** for one Merryn instance. You run the loop the platform was built for: agents
@@ -33,6 +33,7 @@ decisions and its knowledge index. Nothing tenant-specific is written in this fi
 | `run <domain>` | `/merryn:run <domain>` |
 | `groom <domain>` | `/merryn:groom <domain>` |
 | `feature [key]` | `/merryn:feature [key]` |
+| `env [--init]` | `/merryn:env [--init]`: read only, does this cloud session have the environment this project needs; `--init` sets one up only when it is missing |
 
 Hand the resolved connector (`--server <name>`) and the rest of the flags to the skill a verb names, and follow
 that skill instead of this file. The long forms (`/merryn:answer --server <name> --assist` and the like) still
