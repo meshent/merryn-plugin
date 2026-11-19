@@ -50,7 +50,7 @@ hold tickets until someone answers them.
   decisions in force, similar answered questions, duplicates. Its signals are deterministic; the judgment is yours.
 - `list_items {kind:"decision", status:"todo", project?, domain?}` (and `status:"blocked"`): **candidate decisions**
   the lanes filed from earlier answers, waiting for the owner. `get_decision {key}` for each: statement, the
-  question it came from, who proposed it, what cites it.
+  question it came from, who proposed it (`proposedBy`, `createdBy`), what cites it.
 - **Nothing open:** say so in one line, list what was answered since the last run if anything
   (`list_decisions {category:"answer", since}`), and stop. Filing questions is the lanes' job; an empty desk
   is a good outcome, not a prompt to manufacture work.
@@ -121,7 +121,8 @@ For a long or jargon-heavy desk the owner would rather answer as a handful of pr
    until they reply.
 6. **Record** on approval: a principle approved in this run that is not yet on the instance is created first
    (`create_item {domain, kind:"decision", category:"principle", statement, title}`) so answers can cite it. Do
-   not send `approvedBy` or `approvedAt`: the server stamps them with the caller and today (a non-admin cannot name
+   not send `approvedBy` or `approvedAt`: the server stamps them with today and the caller, or, for a connector a person approved, that
+   person, with the connector as `approvedVia` (a non-admin cannot name
    another approver). Then `answer_question` for each question with the brief's text (adjusted for what
    the owner changed) and the provenance as fields: `mode` (`principle`, `rule`, `filed` or `human`),
    `decidedBy` (the decision key; required for principle and rule), `deviates`, `recordedBy:"answer --assist (<model>)"`.
