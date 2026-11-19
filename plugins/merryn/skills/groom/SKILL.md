@@ -60,9 +60,13 @@ The domain is the argument. If none was given, `list_domains`, ask which domain,
   standing ruling>", body:"From <question key>, answered by <who>. Candidate: not in force until the owner
   accepts it."}`. Created `todo`, it is a candidate, not a decision in force: the desk (`desk_evaluate`, `/merryn:answer --auto`), `list_decisions` and
   `answer_question`'s `decidedBy` ignore it until the owner rules. Name it in the handoff with how to rule: the
-  owner **accepts** it with `update_item {key, etag, fields:{status:"done"}}` (it is then in force, and the
-  instance records who approved it and when) or **vetoes** it with `fields:{status:"superseded"}`; either
-  needs the `answer` scope, not `admin`. Creating a decision needs the `answer` or `admin` scope: when the
+  owner **accepts** it on the board (Desk, Candidates tab, or the candidate's own page) or through a connector
+  they approved with the `answer` scope: `update_item {key, etag, fields:{status:"done"}}` puts it in force under
+  the same key, and the instance records the person as `approvedBy`, the connector as `approvedVia`, and the date.
+  The owner **rejects** it with `fields:{status:"superseded"}`. Accepting needs a person behind the call: a token
+  no person approved (one an admin minted, an unattended run) is refused `403 accept-needs-person` and may only
+  reject; it may still propose. Filing is the lane's part, ruling is the owner's: do not accept a candidate you
+  filed in the same run. Creating a decision needs the `answer` or `admin` scope: when the
   create is refused with `forbidden` or `project-not-allowed`, file it instead as `create_item {domain,
   kind:"note", labels:["decision-candidate"], title, body}` with the same text (the owner records it as a
   decision, or closes the note); if that is refused too, name it in the handoff only.

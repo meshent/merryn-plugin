@@ -4,13 +4,23 @@ The `merryn` plugin's notable changes, newest first. The version is `plugins/mer
 This repository has no release train: each change that alters what the plugin does sets the next version there, in
 the same pull request, and adds its entry here.
 
-## 0.3.10: assist answers go to Applied
+## 0.3.12: assist answers go to Applied
 - `/merryn answer --assist` records every row the owner approved with `reviewed:true`, so the answer is reviewed in
   the same write and lands in the desk's Applied tab. Before this, answers recorded by principle or as filed waited in
   Auto-answered for a board Accept the owner had in effect already given, and piled up there. On an instance whose
   `answer_question` has no `reviewed`, the run records without it and says those answers wait for Accept. Earlier
   approved answers are accepted with the instance's `review_question` only when the owner asks in the run.
 - `--auto` never marks an answer reviewed: the owner reviews what the desk decided.
+
+## 0.3.11: accepting candidate decisions
+- The owner's rule (2026-11-19): accepting a candidate decision is an answer. A connector the owner approved with
+  the `answer` scope acts for them and accepts any candidate, whoever filed it; the instance records the owner as
+  `approvedBy` and the connector as `approvedVia`. A token no person approved may propose and reject, never accept
+  (`403 accept-needs-person`). Needs a Mira instance with the same rule; an older one answers `admin-accept-only`
+  or `self-accept`, and the owner accepts on the board.
+- `/merryn answer` lists the candidates waiting, asks the owner about each, and accepts or rejects on their word.
+  `answer_question` never accepts a candidate; `--auto` never accepts one.
+- `groom` says where and how the owner accepts, which refusal a caller gets, and what to do next.
 
 ## 0.3.9: fan-out
 - **Fan-out mode** in the loop: `/merryn loop [project] --siblings N` (and the project's default, `fanOutSiblings` in
