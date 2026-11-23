@@ -139,12 +139,15 @@ owner is there to confirm it (the owner's rule of 2026-11-23):
   that the owner did not confirm in this conversation.
 - **Nobody can be asked** (an unattended run, a lane, a blocked item): file a **candidate** with `status:"todo"`
   so the work is not held up. A candidate decides nothing until the owner accepts it on the board (Desk,
-  Candidates) or through their connector. A token no person approved always files a candidate, whatever
-  `status` it sends.
+  Candidates) or through their connector. A non-admin token no person approved that sends `done` or no
+  `status` gets a candidate (`todo`) back. Creating any decision, candidate or not, needs the `answer` or
+  `admin` scope: on `forbidden` or `project-not-allowed`, file a `note` labelled `decision-candidate` instead,
+  as groom does.
 - **Fixing a candidate before it's accepted:** whoever may accept it may correct its `title`, `statement`,
   `body`, `category` or `scope` with `update_item` (instances from release 20261123) instead of filing a second
-  one. To reject it in favour of another decision in force, send `{status:"superseded", supersededBy:"<key>"}` in
-  one patch.
+  one. To reject it in favour of another decision in force in this project, send
+  `{status:"superseded", supersededBy:"<key>"}` in one patch. A candidate rejected on such an instance with no
+  successor may name one later with `{supersededBy}` alone; one rejected earlier is linked by an admin.
 
 `create_item` binds more fields than an older instance's advertised MCP schema lists: `question` (a question's
 text), `for` and `level` (a request's consumer and the seam's level) and `blockedReason` are accepted on create, by
