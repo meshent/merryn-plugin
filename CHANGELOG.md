@@ -4,13 +4,20 @@ The `merryn` plugin's notable changes, newest first. The version is `plugins/mer
 This repository has no release train: each change that alters what the plugin does sets the next version there, in
 the same pull request, and adds its entry here.
 
-## 0.3.12: assist answers go to Applied
+## 0.3.13: assist answers go to Applied
 - `/merryn answer --assist` records every row the owner approved with `reviewed:true`, so the answer is reviewed in
   the same write and lands in the desk's Applied tab. Before this, answers recorded by principle or as filed waited in
   Auto-answered for a board Accept the owner had in effect already given, and piled up there. On an instance whose
   `answer_question` has no `reviewed`, the run records without it and says those answers wait for Accept. Earlier
   approved answers are accepted with the instance's `review_question` only when the owner asks in the run.
 - `--auto` never marks an answer reviewed: the owner reviews what the desk decided.
+
+## 0.3.12: filing decisions in force or as candidates
+- The owner's rule (2026-11-23): a connector creates a decision in force only after the owner confirms its exact
+  text in the conversation; when nobody can be asked it files a candidate (`status:"todo"`) so work is not held up.
+  The instance tool map (`_instance`) says so under "Filing a decision".
+- A candidate's wording is corrected with `update_item` before it is accepted, and a reject names its successor in
+  the same patch (`{status:"superseded", supersededBy}`). Needs a Mira instance from release 20261123.
 
 ## 0.3.11: accepting candidate decisions
 - The owner's rule (2026-11-19): accepting a candidate decision is an answer. A connector the owner approved with
