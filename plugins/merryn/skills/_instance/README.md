@@ -91,7 +91,7 @@ One line each: what it does · scope · REST twin (relative to `/api/v1`).
 |---|---|---|---|
 | `list_items` | filtered list (domain, kind, status, tier, repo, q, `blockedReasonPrefix`, limit, default 100); each row is key, domain, kind, status, tier, priority, repo, release, title, the live lease holder (`leased`) and `updatedAt`, plus, when set, `leaseSession`, `externalSession`, `blockedReason` and `resumeFrom` (cut to 240 characters) and the structured `landing`; `q` matches key, title, body and `blockedReason`; `fields` keeps only the named row keys (`key` always); body, acceptance criteria, `blocks`, `dependsOn` and links are omitted (`get_item` each, or use the REST twin) | read | `GET /items?…` (adds owner and leased filters, returns full items, default limit 1000; `blockedReasonPrefix` too, and `fields=…` returns the compact rows instead) |
 | `get_item` | one item: body, acceptance criteria, links, the structured `landing` when one was recorded, ETag and its last 20 events (`get_history` has them all). Compact: `fields` (item fields to keep; `id` and `etag` always; `events` by name) and `events` (0-20, default 20) | read | `GET /items/{key}?fields=…&events=N` (events: `GET /items/{key}/events`) |
-| `create_item` | create a task, feature, question, request, note or decision (a decision created with no `status` is in force, `done`, by the owner's ruling; propose a candidate with `status:"todo"`); also takes `parent`, `labels`, `release`, `dueDate`, `storyPoints`, `assignee` (+`assigneeSoft`), `watchers` and `template` (below) | work | `POST /items` |
+| `create_item` | create a task, feature, question, request, note or decision (a decision created with no `status` is in force, `done`: only after the owner confirmed its text in this conversation; when nobody can be asked, file a candidate with `status:"todo"`; see "Filing a decision" below); also takes `parent`, `labels`, `release`, `dueDate`, `storyPoints`, `assignee` (+`assigneeSoft`), `watchers` and `template` (below) | work | `POST /items` |
 | `update_item` | patch fields with the item's ETag (412 when stale); status never becomes in-progress this way; labels, dueDate (yyyy-MM-dd), storyPoints (0-100) and watchers too, never the assignee (use `assign_item`) | work | `PATCH /items/{key}` with `If-Match` |
 
 ### Authoring and assignment (tickets)
@@ -129,6 +129,22 @@ saved templates uses generic defaults. The templates themselves are REST only: `
 | `get_escalation_policy` | the categories that always go to a person (tenant default overlaid by the domain's) | read | `GET /escalation-policy`, `GET /domains/{id}/escalation-policy` |
 | `get_decision` | one decision or answered question, its citations and its supersededBy chain | read | `GET /decisions/{key}` |
 | `list_decisions` | decisions and answered questions (domain, category, since, q) | read | `GET /decisions` |
+
+**Filing a decision: in force or a candidate.** A connector can do both, and which one depends on whether the
+owner is there to confirm it (the owner's rule of 2026-11-23):
+- **The owner is in the conversation:** show them the decision's exact title and statement and ask. Only on their
+  yes, create it in force: `create_item {domain, kind:"decision", category, title, statement}` with no `status`
+  (it defaults to `done`). Through a connector the owner approved, the instance records the owner as `approvedBy`
+  and the connector as `approvedVia`, and it cannot tell whether they saw the text. Never create one in force
+  that the owner did not confirm in this conversation.
+- **Nobody can be asked** (an unattended run, a lane, a blocked item): file a **candidate** with `status:"todo"`
+  so the work is not held up. A candidate decides nothing until the owner accepts it on the board (Desk,
+  Candidates) or through their connector. A token no person approved always files a candidate, whatever
+  `status` it sends.
+- **Fixing a candidate before it's accepted:** whoever may accept it may correct its `title`, `statement`,
+  `body`, `category` or `scope` with `update_item` (instances from release 20261123) instead of filing a second
+  one. To reject it in favour of another decision in force, send `{status:"superseded", supersededBy:"<key>"}` in
+  one patch.
 
 `create_item` binds more fields than an older instance's advertised MCP schema lists: `question` (a question's
 text), `for` and `level` (a request's consumer and the seam's level) and `blockedReason` are accepted on create, by

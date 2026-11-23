@@ -4,6 +4,13 @@ The `merryn` plugin's notable changes, newest first. The version is `plugins/mer
 This repository has no release train: each change that alters what the plugin does sets the next version there, in
 the same pull request, and adds its entry here.
 
+## 0.3.12: filing decisions in force or as candidates
+- The owner's rule (2026-11-23): a connector creates a decision in force only after the owner confirms its exact
+  text in the conversation; when nobody can be asked it files a candidate (`status:"todo"`) so work is not held up.
+  The instance tool map (`_instance`) says so under "Filing a decision".
+- A candidate's wording is corrected with `update_item` before it is accepted, and a reject names its successor in
+  the same patch (`{status:"superseded", supersededBy}`). Needs a Mira instance from release 20261123.
+
 ## 0.3.11: accepting candidate decisions
 - The owner's rule (2026-11-19): accepting a candidate decision is an answer. A connector the owner approved with
   the `answer` scope acts for them and accepts any candidate, whoever filed it; the instance records the owner as
