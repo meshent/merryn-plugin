@@ -241,6 +241,9 @@ Brief every lane with, verbatim:
   keep working and note it.
 - Commit after every lettered step and push immediately, so a dead lane leaves a resumable record.
 - **Never** push the default branch, open a PR, dispatch a workflow, set a version, or touch a credential.
+  (The coordinator lands the lane's work in Step 4, or in fan-out mode the landing session (`/merryn:landing`) opens
+  the PR and the coordinator merges, so a lane skips the landing steps that `/merryn:run` and `/merryn:feature`
+  take when they run on their own, and releases `handoff`.)
 - Tests with every change; `0 skipped` or it is not verified; name the test that would falsify each claim.
 - Review gate inside the lane: three reviewer subagents run **synchronously** (correctness, security,
   spec-versus-acceptance-criteria), each finding with a reproduction; fix confirmed findings; one round-2

@@ -1,6 +1,6 @@
 ---
 name: run
-description: "Work one domain's tickets from a Merryn instance. Usage /merryn:run <domain> [--server <mcp-name>] [--project <id>] [--item <key>] [--session <label>] [--tier <tier>...] [--max N]. Reads the domain's charter, position and policy from the instance, pulls the tickets its routing policy assigns to the model you are on (an atomic checkout, so no two lanes take the same ticket), works each on a branch under the charter, heartbeats, and always releases with an outcome. Design-tier tickets are left for /merryn:groom; features for /merryn:feature."
+description: "Work one domain's tickets from a Merryn instance. Usage /merryn:run <domain> [--server <mcp-name>] [--project <id>] [--item <key>] [--session <label>] [--tier <tier>...] [--max N]. Reads the domain's charter, position and policy from the instance, pulls the tickets its routing policy assigns to the model you are on (an atomic checkout, so no two lanes take the same ticket), works each on a branch under the charter, opens its PR with an independent review, heartbeats, and always releases with an outcome. Design-tier tickets are left for /merryn:groom; features for /merryn:feature."
 ---
 
 You are the **implementer** for one domain of one Merryn project. You execute tickets that are already
@@ -105,11 +105,39 @@ One ticket at a time, up to `--max N` (default 3) or until context runs heavy or
    decides it, name that decision's key in the body so `/merryn:answer --auto` can settle it) and pull the next
    ticket. Never commit past an undecided fork.
 6. Commit (the charter's trailer, if it names one) and push the branch at once. Never the default branch.
+   Then land it, as the merryn skill's *Step 4 — land it* points 1 to 4 do (`${CLAUDE_PLUGIN_ROOT}/skills/merryn/SKILL.md`;
+   without the plugin, `get_skill {id:"merryn"}`). Heartbeat through every step; the lease you pulled is the one you land under:
+   a. **Merge the base into the branch** (a merge commit, never a rebase of pushed history), push, and rerun the
+      build and the full suites on the merged tree, 0 skipped. A conflict you cannot resolve within the ticket's
+      scope: release `handoff` with the conflicting files in the note.
+   b. **Open the PR** from your branch into the base the charter's branch model names (`release` where a release
+      train publishes, else the default branch): `open_change {repo, head, base, title, body, items:[key]}`, falling
+      back to the git host's own tool, then `record_change`. Its body states what landed, the test counts per
+      project, the review findings fixed and surviving, and the decisions taken without a question (for the owner's
+      veto). Use the repository's PR template when it has one.
+   c. **Independent review**: a reviewer agent that did not write the code, briefed with the code (the PR and its
+      merged tree) and the ticket, not your conclusions. It posts a *comment* review on the PR (never a formal
+      approval) that ends `MERGE` or `DO NOT MERGE`. Fix what it confirms, push, rerun the suites and review again,
+      with the same two-round cap as `_review/README.md`; what survives goes in the PR body and the release note.
+      If you cannot dispatch a reviewer agent, the review could not run: release `handoff` (below) and say so,
+      never a self-review dressed as an independent one.
+   d. **Merge** only when the charter, or the owner in writing on the item or the desk, lets this session merge,
+      and never a PR you authored. Otherwise (the usual case) release `blocked` with blockedReason
+      `"awaiting merge of <PR URL>"` and the structured `landing` (point 7).
+   A coordinator that dispatched you as a lane (the merryn skill's Step 3, or `/merryn:lane`) lands the work
+   itself and says so in the brief: then skip a to d and release `handoff`.
 7. **Release, always** (in a `finally`, even on failure):
-   - `done` only when every acceptance criterion is met and nothing is left to land:
-     `release {key, session, outcome:"done", commits:["<repo>@<sha>"], note}`.
-   - work pushed but landing (PR, review, merge, publish) still to come, or out of time: `outcome:"handoff",
-     resumeFrom:"<branch>@<sha>"`, with the note.
+   - `done` only when every acceptance criterion is met and nothing is left to land (no PR, merge, publish or
+     deploy still to come): `release {key, session, outcome:"done", commits:["<repo>@<sha>"], note}`.
+   - **the normal end of a ticket with an open PR**: `outcome:"blocked", blockedReason:"awaiting merge of <PR URL>",
+     landing:{prUrl, headSha, baseSha, verdict:"MERGE"|"DO_NOT_MERGE", reviewUrl, tests:{passed, failed, skipped}}`,
+     with the note. A blocked item is never pulled, so your own next `pull_work` does not re-take it; the loop's
+     Step 1 resumes it once the PR has merged. An instance that refuses `landing` (an older one): put
+     `VERDICT=<MERGE|DO NOT MERGE> review=<url> head=<sha> base=<sha> tests=<p/f/s>` at the start of the note instead.
+   - `handoff` only for work that is pushed with **no PR yet** (out of time, the review could not run, an
+     unresolved merge conflict, or a coordinator that lands it): `outcome:"handoff", resumeFrom:"<branch>@<sha>"`,
+     with the note. Never release `handoff` once the PR is open: `handoff` returns the item to `todo` with no
+     lease, so the next `pull_work`, your own included, re-takes the item you just finished.
    - blocked on a decision: `outcome:"blocked", blockedReason, question:{title, question, body, options}`
      (the instance files the question and links it, so answering it unblocks the ticket).
    - could not start: `outcome:"abandon"` with the reason.
@@ -134,15 +162,19 @@ Remove the worktree once its branch is pushed.
 ```
 NEXT: run <domain> @<model>      # tickets remain for a model; name the model the policy routes them to
 NEXT: groom <domain> @<model>    # queue empty or thin, only design or untiered tickets remain
-BLOCKED: <domain> — <reason>     # needs a decision, a merge, a publish or anything the charter forbids here
+BLOCKED: <domain> — awaiting merge of <PR URLs>   # the usual ending when this run's PRs are open
+BLOCKED: <domain> — <reason>     # needs a decision, a publish or anything the charter forbids here
 DONE: <domain>                   # nothing left in the queue
 ```
+When tickets remain for a model and PRs are open, `NEXT:` still names the next run; list the open PRs in the reply.
 Emit `BLOCKED:`, never `NEXT:`, when the next step needs a person: a wrong `NEXT:` makes an unattended loop spin.
 
 ## Invariants
 - Never work a ticket you have not pulled; one live lease per session label; release always.
-- Never push the default branch; never open a PR; never dispatch a workflow; never set `Version*` /
-  `PackageVersion`; never handle, print or commit a credential; explicit minimum package versions, never `*`.
+- Never push the default branch; open a PR only from your own work branch into the base the charter's branch
+  model names (`release` where a release train publishes, else the default branch); never merge a PR you
+  authored; never dispatch a workflow; never set `Version*` / `PackageVersion`; never handle, print or commit a
+  credential; explicit minimum package versions, never `*`.
 - Nothing tenant-specific in a platform core package; tenant values live in the tenant's host and config.
 - Tests with every change. A skipped test is not verified. A claim without a falsifying test is an opinion.
 - Git is the durable copy: docs go through `submit_doc`; state changes go through the instance, never a file.
