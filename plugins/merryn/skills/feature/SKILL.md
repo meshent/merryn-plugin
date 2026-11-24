@@ -98,11 +98,18 @@ Vocabulary: **project**, **domains** (each with a charter), **tickets** (a featu
 7. Commit and push the branch at once after each step. Never the default branch.
 8. **Document it**: `submit_doc {path:"features/decisions/<key>.md", markdown, items:[key]}` with `## Intent`
    and `## Usage`, per `${CLAUDE_PLUGIN_ROOT}/skills/_docs/README.md`.
-9. **Land it**, as the merryn skill's *Step 4 — land it* points 1 to 4 do (`${CLAUDE_PLUGIN_ROOT}/skills/merryn/SKILL.md`;
-   without the plugin, `get_skill {id:"merryn"}`), heartbeating under the lease you claimed:
+9. **Land it**, as the merryn skill's *Step 4 — land it* points 1 to 4 do
+   (`${CLAUDE_PLUGIN_ROOT}/skills/merryn/SKILL.md`; without the plugin, `get_skill {id:"merryn"}`),
+   heartbeating under the lease you claimed.
+   A coordinator that dispatched you as a lane says so in its brief (the merryn skill's Step 3, where the
+   coordinator lands the work, or `/merryn:lane`, where the landing session does): then skip a to d and release
+   `handoff`. Otherwise, before a, make sure you can dispatch a reviewer agent (c); if you cannot, the review
+   cannot run: release `handoff` now and say so, so that no PR is opened that nobody reviews.
    a. **Merge the base into the branch** (a merge commit, never a rebase of pushed history), push, and rerun the
-      build and the full suites on the merged tree, 0 skipped. A conflict you cannot resolve within the feature's
-      scope: release `handoff` with the conflicting files in the note.
+      build and the full suites on the merged tree, 0 skipped. A push rejected after this merge: fetch and merge
+      again, never rebase (a rebase drops the merge commit). A conflict you cannot resolve within the feature's
+      scope: release `blocked` with blockedReason `"merge conflict with <base>: <files>"` and the note, as
+      `/merryn:landing` does, so that no pull re-takes it.
    b. **Open the PR** from your branch into the base the charter's branch model names (`release` where a release
       train publishes, else the default branch): `open_change {repo, head, base, title, body, items:[key]}`, falling
       back to the git host's own tool, then `record_change`. Its body states what landed, the test counts per
@@ -112,13 +119,13 @@ Vocabulary: **project**, **domains** (each with a charter), **tickets** (a featu
       merged tree) and the feature, not your conclusions. It posts a *comment* review on the PR (never a formal
       approval) that ends `MERGE` or `DO NOT MERGE`. Fix what it confirms, push, rerun the suites and review again,
       with the same two-round cap as `_review/README.md`; what survives goes in the PR body and the release note.
-      If you cannot dispatch a reviewer agent, the review could not run: release `handoff` (below) and say so,
-      never a self-review dressed as an independent one.
+      If the reviewer fails once the PR is open (it dies, or cannot post), never self-review in its place and
+      never release `handoff`: release `blocked` with blockedReason `"awaiting merge of <PR URL>"`, no `landing`,
+      and a note that starts `UNREVIEWED:`, so nothing merges it on a verdict that does not exist.
    d. **Merge** only when the charter, or the owner in writing on the item or the desk, lets this session merge,
-      and never a PR you authored. Otherwise (the usual case) release `blocked` with blockedReason
-      `"awaiting merge of <PR URL>"` and the structured `landing` (point 10).
-   A coordinator that dispatched you as a lane (the merryn skill's Step 3, or `/merryn:lane`) lands the work
-   itself and says so in the brief: then skip a to d and release `handoff`.
+      and never a PR you authored. A PR this session opened in b is one it authored, so working alone you always
+      end here: release `blocked` with blockedReason `"awaiting merge of <PR URL>"` and the structured `landing`
+      (point 10).
 10. **Release, always.** Every outcome carries a note (what landed, tests per project, review findings fixed and
    surviving, decisions made without a question for veto) and `decisions:[<keys>]`, the decision keys the work
    relied on.
@@ -130,9 +137,10 @@ Vocabulary: **project**, **domains** (each with a charter), **tickets** (a featu
      the PR has merged. An instance that refuses `landing` (an older one): put `VERDICT=<MERGE|DO NOT MERGE>
      review=<url> head=<sha> base=<sha> tests=<p/f/s>` at the start of the note instead.
    - `handoff` with `resumeFrom:"<branch>@<sha>"` and the commits only for work that is pushed with **no PR yet**
-     (out of time, the review could not run, an unresolved merge conflict, or a coordinator that lands it). Never
+     (out of time before b, no reviewer agent to dispatch, or a coordinator that lands it). Never
      release `handoff` once the PR is open: `handoff` returns the feature to `todo` with no lease, so the next
      pick, your own included, re-takes the feature you just finished.
+   - blocked on a merge conflict, or a PR the reviewer could not review: as 9a and 9c say.
 
 ## Step 4 — NOT READY: file the gaps, do not improvise
 1. Each `missing` seam: one request on the owning domain, `create_item {domain:<owner>, kind:"request",
@@ -152,7 +160,7 @@ Built (key, what landed, commits, criteria met, PR URL and its review verdict), 
 filed), next. Last line, exactly one of:
 ```
 NEXT: feature <key> @<model>       # the next eligible feature, and the model its routing names
-BLOCKED: <key> — awaiting merge of <PR URLs>   # the usual ending when this run's PRs are open
+BLOCKED: <keys> — awaiting merge of <PR URLs>  # the usual ending when this run's PRs are open; every key
 BLOCKED: <key> — <seams and requests>
 DONE: features — nothing eligible
 ```

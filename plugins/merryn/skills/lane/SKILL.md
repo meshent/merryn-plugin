@@ -44,7 +44,8 @@ From the spawn prompt (ask nobody for a missing one: stop with a one-line final 
    errors up to 4 times). **Never** push the default branch or the release branch, open a PR, merge, dispatch a
    workflow, set `Version*`/`PackageVersion`, use floating `*` versions, or edit another repository (a cross-repository
    need is filed as an item). In fan-out mode the landing session (`/merryn:landing`) opens the PR and the coordinator
-   merges, so you skip the landing steps (run's Step 3.6 a to d) that `/merryn:run` takes when it runs on its own. No model id in pushed text except a commit trailer the harness adds.
+   merges, so you skip the landing steps (run's Step 3.6 a to d) that `/merryn:run` takes when it runs on its own.
+   No model id in pushed text except a commit trailer the harness adds.
 6. **Lease.** Heartbeat LABEL every 15 minutes. Release **always**, with LABEL: normally `handoff` with
    `resumeFrom BRANCH@<sha>`, `commits`, `decisions:[keys relied on]` and a note (what landed, per-project
    passed/failed/skipped, review findings, decisions made without a question for the owner's veto, what remains).

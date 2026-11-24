@@ -197,7 +197,8 @@ An older instance's `list_items` omits `blockedReason`: `get_item` each item it 
   (`update_item {key, etag, fields:{status:"todo", blockedReason:null}}`), `append_event {key, kind:"note"}`
   naming the closed PR and its branch head (the next lane can resume from it), and put it in the close-out
   batch (Step 6) so the owner sees why it is back.
-- **Still open:** leave it blocked.
+- **Still open:** leave it blocked, and put the PR in the close-out batch (Step 6) with its verdict: a
+  standalone `/merryn:run` or `/merryn:feature` may have opened it, and then no Step 4 of yours lists it.
 In `--dry-run`, only list these with the action each would get.
 
 ## Step 2 — plan lanes

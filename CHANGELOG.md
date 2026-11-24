@@ -12,7 +12,9 @@ the same pull request, and adds its entry here.
   from your own work branch into the base …; never merge a PR you authored" in place of "never open a PR".
 - The normal end of a ticket with an open PR is `release blocked` "awaiting merge of <PR URL>" with the structured
   `landing`, so the session's next `pull_work` no longer re-takes the item it just finished. `handoff` stays only
-  for work pushed with no PR yet. The handoff lines gain `BLOCKED: <domain> — awaiting merge of <PR URLs>`.
+  for work pushed with no PR yet; a merge conflict, or a reviewer that fails once the PR is open, also releases
+  `blocked`, and a session that cannot dispatch a reviewer opens no PR. The loop's Step 1 puts a still-open PR it
+  finds there in the close-out batch. The handoff lines gain `BLOCKED: <domain> — awaiting merge of <PR URLs>`.
 - Unchanged: `/merryn:groom` and `/merryn:answer` never open a PR, and neither does a lane (the loop's brief and
   `/merryn:lane`), because the coordinator or the landing session lands its work; both now say so.
 

@@ -105,11 +105,18 @@ One ticket at a time, up to `--max N` (default 3) or until context runs heavy or
    decides it, name that decision's key in the body so `/merryn:answer --auto` can settle it) and pull the next
    ticket. Never commit past an undecided fork.
 6. Commit (the charter's trailer, if it names one) and push the branch at once. Never the default branch.
-   Then land it, as the merryn skill's *Step 4 — land it* points 1 to 4 do (`${CLAUDE_PLUGIN_ROOT}/skills/merryn/SKILL.md`;
-   without the plugin, `get_skill {id:"merryn"}`). Heartbeat through every step; the lease you pulled is the one you land under:
+   Then land it, as the merryn skill's *Step 4 — land it* points 1 to 4 do
+   (`${CLAUDE_PLUGIN_ROOT}/skills/merryn/SKILL.md`; without the plugin, `get_skill {id:"merryn"}`). Heartbeat
+   through every step; the lease you pulled is the one you land under.
+   A coordinator that dispatched you as a lane says so in its brief (the merryn skill's Step 3, where the
+   coordinator lands the work, or `/merryn:lane`, where the landing session does): then skip a to d and release
+   `handoff`. Otherwise, before a, make sure you can dispatch a reviewer agent (c); if you cannot, the review
+   cannot run: release `handoff` now and say so, so that no PR is opened that nobody reviews.
    a. **Merge the base into the branch** (a merge commit, never a rebase of pushed history), push, and rerun the
-      build and the full suites on the merged tree, 0 skipped. A conflict you cannot resolve within the ticket's
-      scope: release `handoff` with the conflicting files in the note.
+      build and the full suites on the merged tree, 0 skipped. A push rejected after this merge: fetch and merge
+      again, never rebase (a rebase drops the merge commit). A conflict you cannot resolve within the ticket's
+      scope: release `blocked` with blockedReason `"merge conflict with <base>: <files>"` and the note, as
+      `/merryn:landing` does, so that no pull re-takes it.
    b. **Open the PR** from your branch into the base the charter's branch model names (`release` where a release
       train publishes, else the default branch): `open_change {repo, head, base, title, body, items:[key]}`, falling
       back to the git host's own tool, then `record_change`. Its body states what landed, the test counts per
@@ -119,13 +126,13 @@ One ticket at a time, up to `--max N` (default 3) or until context runs heavy or
       merged tree) and the ticket, not your conclusions. It posts a *comment* review on the PR (never a formal
       approval) that ends `MERGE` or `DO NOT MERGE`. Fix what it confirms, push, rerun the suites and review again,
       with the same two-round cap as `_review/README.md`; what survives goes in the PR body and the release note.
-      If you cannot dispatch a reviewer agent, the review could not run: release `handoff` (below) and say so,
-      never a self-review dressed as an independent one.
+      If the reviewer fails once the PR is open (it dies, or cannot post), never self-review in its place and
+      never release `handoff`: release `blocked` with blockedReason `"awaiting merge of <PR URL>"`, no `landing`,
+      and a note that starts `UNREVIEWED:`, so nothing merges it on a verdict that does not exist.
    d. **Merge** only when the charter, or the owner in writing on the item or the desk, lets this session merge,
-      and never a PR you authored. Otherwise (the usual case) release `blocked` with blockedReason
-      `"awaiting merge of <PR URL>"` and the structured `landing` (point 7).
-   A coordinator that dispatched you as a lane (the merryn skill's Step 3, or `/merryn:lane`) lands the work
-   itself and says so in the brief: then skip a to d and release `handoff`.
+      and never a PR you authored. A PR this session opened in b is one it authored, so working alone you always
+      end here: release `blocked` with blockedReason `"awaiting merge of <PR URL>"` and the structured `landing`
+      (point 7).
 7. **Release, always** (in a `finally`, even on failure):
    - `done` only when every acceptance criterion is met and nothing is left to land (no PR, merge, publish or
      deploy still to come): `release {key, session, outcome:"done", commits:["<repo>@<sha>"], note}`.
@@ -134,10 +141,11 @@ One ticket at a time, up to `--max N` (default 3) or until context runs heavy or
      with the note. A blocked item is never pulled, so your own next `pull_work` does not re-take it; the loop's
      Step 1 resumes it once the PR has merged. An instance that refuses `landing` (an older one): put
      `VERDICT=<MERGE|DO NOT MERGE> review=<url> head=<sha> base=<sha> tests=<p/f/s>` at the start of the note instead.
-   - `handoff` only for work that is pushed with **no PR yet** (out of time, the review could not run, an
-     unresolved merge conflict, or a coordinator that lands it): `outcome:"handoff", resumeFrom:"<branch>@<sha>"`,
+   - `handoff` only for work that is pushed with **no PR yet** (out of time before b, no reviewer agent to
+     dispatch, or a coordinator that lands it): `outcome:"handoff", resumeFrom:"<branch>@<sha>"`,
      with the note. Never release `handoff` once the PR is open: `handoff` returns the item to `todo` with no
      lease, so the next `pull_work`, your own included, re-takes the item you just finished.
+   - blocked on a merge conflict, or a PR the reviewer could not review: as 6a and 6c say.
    - blocked on a decision: `outcome:"blocked", blockedReason, question:{title, question, body, options}`
      (the instance files the question and links it, so answering it unblocks the ticket).
    - could not start: `outcome:"abandon"` with the reason.
