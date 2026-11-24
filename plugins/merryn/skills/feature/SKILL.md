@@ -1,6 +1,6 @@
 ---
 name: feature
-description: "Work the cross-cutting feature tickets of a Merryn project. Usage /merryn:feature [key] [--server <mcp-name>] [--project <id>] [--domain <id>] [--session <label>] [--probe-only] [--dry-run] [--rounds N]. Takes each feature with an atomic checkout, probes whether the repositories actually expose the seams it needs (to the level its consumer restores), implements the aggregate wiring only when they do, files the gaps as requests on the owning domain otherwise, and closes each built feature with a decision doc."
+description: "Work the cross-cutting feature tickets of a Merryn project. Usage /merryn:feature [key] [--server <mcp-name>] [--project <id>] [--domain <id>] [--session <label>] [--probe-only] [--dry-run] [--rounds N]. Takes each feature with an atomic checkout, probes whether the repositories actually expose the seams it needs (to the level its consumer restores), implements the aggregate wiring only when they do and opens its PR with an independent review, files the gaps as requests on the owning domain otherwise, and closes each built feature with a decision doc."
 ---
 
 You are the **feature builder** for one Merryn project. Domains own their abstractions; you own the
@@ -98,10 +98,49 @@ Vocabulary: **project**, **domains** (each with a charter), **tickets** (a featu
 7. Commit and push the branch at once after each step. Never the default branch.
 8. **Document it**: `submit_doc {path:"features/decisions/<key>.md", markdown, items:[key]}` with `## Intent`
    and `## Usage`, per `${CLAUDE_PLUGIN_ROOT}/skills/_docs/README.md`.
-9. **Release.** `done` only when every criterion is met, survived review, and nothing is left to land.
-   Usually a PR, merge or publish is still to come: `handoff` with `resumeFrom:"<branch>@<sha>"`, the commits
-   and a note (what landed, tests per project, review findings fixed and surviving, decisions made without a
-   question for veto). Pass `decisions:[<keys>]` with every outcome: the decision keys the work relied on.
+9. **Land it**, as the merryn skill's *Step 4 — land it* points 1 to 4 do
+   (`${CLAUDE_PLUGIN_ROOT}/skills/merryn/SKILL.md`; without the plugin, `get_skill {id:"merryn"}`),
+   heartbeating under the lease you claimed.
+   A coordinator that dispatched you as a lane says so in its brief (the merryn skill's Step 3, where the
+   coordinator lands the work, or `/merryn:lane`, where the landing session does): then skip a to d and release
+   `handoff`. Otherwise, before a, make sure you can dispatch a reviewer agent (c); if you cannot, the review
+   cannot run: release `handoff` now and say so, so that no PR is opened that nobody reviews.
+   a. **Merge the base into the branch** (a merge commit, never a rebase of pushed history), push, and rerun the
+      build and the full suites on the merged tree, 0 skipped. A push rejected after this merge: fetch and merge
+      again, never rebase (a rebase drops the merge commit). A conflict you cannot resolve within the feature's
+      scope: release `blocked` with blockedReason `"merge conflict with <base>: <files>"` and the note, as
+      `/merryn:landing` does, so that no pull re-takes it.
+   b. **Open the PR** from your branch into the base the charter's branch model names (`release` where a release
+      train publishes, else the default branch): `open_change {repo, head, base, title, body, items:[key]}`, falling
+      back to the git host's own tool, then `record_change`. Its body states what landed, the test counts per
+      project, the review findings fixed and surviving, and the decisions taken without a question (for the owner's
+      veto). Use the repository's PR template when it has one.
+   c. **Independent review**: a reviewer agent that did not write the code, briefed with the code (the PR and its
+      merged tree) and the feature, not your conclusions. It posts a *comment* review on the PR (never a formal
+      approval) that ends `MERGE` or `DO NOT MERGE`. Fix what it confirms, push, rerun the suites and review again,
+      with the same two-round cap as `_review/README.md`; what survives goes in the PR body and the release note.
+      If the reviewer fails once the PR is open (it dies, or cannot post), never self-review in its place and
+      never release `handoff`: release `blocked` with blockedReason `"awaiting merge of <PR URL>"`, no `landing`,
+      and a note that starts `UNREVIEWED:`, so nothing merges it on a verdict that does not exist.
+   d. **Merge** only when the charter, or the owner in writing on the item or the desk, lets this session merge,
+      and never a PR you authored. A PR this session opened in b is one it authored, so working alone you always
+      end here: release `blocked` with blockedReason `"awaiting merge of <PR URL>"` and the structured `landing`
+      (point 10).
+10. **Release, always.** Every outcome carries a note (what landed, tests per project, review findings fixed and
+   surviving, decisions made without a question for veto) and `decisions:[<keys>]`, the decision keys the work
+   relied on.
+   - `done` only when every criterion is met, survived review, and nothing is left to land (no PR, merge,
+     publish or deploy still to come).
+   - **the normal end of a built feature with an open PR**: `outcome:"blocked", blockedReason:"awaiting merge of
+     <PR URL>", landing:{prUrl, headSha, baseSha, verdict:"MERGE"|"DO_NOT_MERGE", reviewUrl, tests:{passed, failed,
+     skipped}}`. A blocked feature is never pulled or claimed again by this run; the loop's Step 1 resumes it once
+     the PR has merged. An instance that refuses `landing` (an older one): put `VERDICT=<MERGE|DO NOT MERGE>
+     review=<url> head=<sha> base=<sha> tests=<p/f/s>` at the start of the note instead.
+   - `handoff` with `resumeFrom:"<branch>@<sha>"` and the commits only for work that is pushed with **no PR yet**
+     (out of time before b, no reviewer agent to dispatch, or a coordinator that lands it). Never
+     release `handoff` once the PR is open: `handoff` returns the feature to `todo` with no lease, so the next
+     pick, your own included, re-takes the feature you just finished.
+   - blocked on a merge conflict, or a PR the reviewer could not review: as 9a and 9c say.
 
 ## Step 4 — NOT READY: file the gaps, do not improvise
 1. Each `missing` seam: one request on the owning domain, `create_item {domain:<owner>, kind:"request",
@@ -117,18 +156,22 @@ Vocabulary: **project**, **domains** (each with a charter), **tickets** (a featu
 5. Move to the next eligible feature. A blocked feature is a normal outcome, not a failure.
 
 ## Step 5 — report
-Built (key, what landed, commits, criteria met), documented (doc path), blocked (seams, levels, requests
+Built (key, what landed, commits, criteria met, PR URL and its review verdict), documented (doc path), blocked (seams, levels, requests
 filed), next. Last line, exactly one of:
 ```
 NEXT: feature <key> @<model>       # the next eligible feature, and the model its routing names
+BLOCKED: <keys> — awaiting merge of <PR URLs>  # the usual ending when this run's PRs are open; every key
 BLOCKED: <key> — <seams and requests>
 DONE: features — nothing eligible
 ```
+When another feature is eligible and PRs are open, `NEXT:` still names it; list the open PRs in the report.
 
 ## Invariants
 - Never work a ticket you have not pulled; one live lease per session label; release always.
-- Never push the default branch; never open a PR; never dispatch a workflow; never set `Version*` /
-  `PackageVersion`; never handle, print or commit a credential; explicit minimum package versions, never `*`.
+- Never push the default branch; open a PR only from your own work branch into the base the charter's branch
+  model names (`release` where a release train publishes, else the default branch); never merge a PR you
+  authored; never dispatch a workflow; never set `Version*` / `PackageVersion`; never handle, print or commit a
+  credential; explicit minimum package versions, never `*`.
 - Nothing tenant-specific in a platform core package; tenant values live in the tenant's host and config.
 - Tests with every change. A skipped test is not verified. A claim without a falsifying test is an opinion.
 - Git is the durable copy: docs go through `submit_doc`; state changes go through the instance, never a file.
